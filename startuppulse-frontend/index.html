@@ -21,6 +21,134 @@
     <link rel="stylesheet" href="assets/css/style.css" />
   </head>
   <body>
+
+    <!-- Tela de autenticação: aparece antes do usuário entrar no sistema. -->
+    <div id="authScreen" class="auth-screen">
+        <div class="auth-wrapper container-fluid">
+          <div class="row min-vh-100 align-items-center justify-content-center">
+            <div class="col-12 col-md-10 col-lg-8 col-xl-6">
+              <div class="auth-card">
+                <div class="row g-0">
+                  <!-- Lado institucional da tela -->
+                  <div class="col-lg-5 auth-brand-panel d-none d-lg-flex">
+                    <div>
+                      <div class="brand-icon mb-3">
+                        <i class="bi bi-activity"></i>
+                      </div>
+                      <h2 class="mb-2">StartupPulse</h2>
+                      <p class="mb-0">
+                        Plataforma de monitoramento de empresas incubadas operada pela incubadora.
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Lado funcional da autenticação -->
+                  <div class="col-lg-7">
+                    <div class="auth-form-panel">
+                      <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                          <h3 class="mb-1" id="authTitle">Entrar</h3>
+                          <p class="text-muted mb-0" id="authSubtitle">
+                            Use seu e-mail e senha para acessar o sistema.
+                          </p>
+                        </div>
+                      </div>
+
+                      <!-- Formulário de login -->
+                      <form id="loginForm">
+                        <div class="mb-3">
+                          <label for="loginEmail" class="form-label">E-mail</label>
+                          <input
+                            type="email"
+                            class="form-control"
+                            id="loginEmail"
+                            placeholder="seuemail@incubadora.com"
+                            required
+                          />
+                        </div>
+
+                        <div class="mb-3">
+                          <label for="loginPassword" class="form-label">Senha</label>
+                          <input
+                            type="password"
+                            class="form-control"
+                            id="loginPassword"
+                            placeholder="Digite sua senha"
+                            required
+                          />
+                        </div>
+
+                        <div class="d-grid mb-3">
+                          <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-box-arrow-in-right"></i>
+                            Entrar
+                          </button>
+                        </div>
+                      </form>
+
+                      <hr class="my-4" />
+
+                      <!-- Formulário de cadastro -->
+                      <form id="registerForm">
+                        <h5 class="mb-3">Cadastrar usuário</h5>
+
+                        <div class="mb-3">
+                          <label for="registerName" class="form-label">Nome</label>
+                          <input
+                            type="text"
+                            class="form-control"
+                            id="registerName"
+                            placeholder="Nome do funcionário"
+                            required
+                          />
+                        </div>
+
+                        <div class="mb-3">
+                          <label for="registerEmail" class="form-label">E-mail</label>
+                          <input
+                            type="email"
+                            class="form-control"
+                            id="registerEmail"
+                            placeholder="novoemail@incubadora.com"
+                            required
+                          />
+                        </div>
+
+                        <div class="mb-3">
+                          <label for="registerPassword" class="form-label">Senha</label>
+                          <input
+                            type="password"
+                            class="form-control"
+                            id="registerPassword"
+                            placeholder="Crie uma senha"
+                            required
+                          />
+                        </div>
+
+                        <div class="d-grid">
+                          <button type="submit" class="btn btn-outline-primary">
+                            <i class="bi bi-person-plus"></i>
+                            Cadastrar usuário
+                          </button>
+                        </div>
+                      </form>
+
+                      <div class="mt-4 small text-muted">
+                        Usuário padrão sugerido: <strong>admin@incubadora.com</strong> / <strong>123456</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="text-center mt-3 text-muted small">
+                MVP local com autenticação em navegador.
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+
     <!-- Casca principal do sistema: só aparece depois do login. -->
     <div id="appShell" class="d-none">
       <!-- Topbar principal do sistema. -->
@@ -463,26 +591,117 @@
             <div>
               <h1 class="page-title mb-1">Relatórios</h1>
               <p class="page-subtitle mb-0">
-                Consolidação de histórico, desempenho e preparação para relatórios formais.
+                Emissão de relatórios em PDF por empresa, período e avaliação específica.
               </p>
             </div>
           </div>
 
+          <!-- Painel principal de filtros e emissão -->
+          <div class="app-card mb-4">
+            <div class="card-header-lite mb-4">
+              <h2 class="section-title mb-1">Configuração do relatório</h2>
+              <p class="section-subtitle mb-0">
+                Selecione a empresa, o período e, quando necessário, a avaliação específica.
+              </p>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-12 col-lg-4">
+                <label class="form-label">Empresa</label>
+                <select class="form-select" id="reportCompanySelector"></select>
+              </div>
+
+              <div class="col-12 col-lg-4">
+                <label class="form-label">Ano do relatório</label>
+                <select class="form-select" id="reportYearSelector">
+                  <option value="all">Todos os anos</option>
+                </select>
+              </div>
+
+              <div class="col-12 col-lg-4">
+                <label class="form-label">Avaliação específica</label>
+                <select class="form-select" id="reportEvaluationSelector">
+                  <option value="">Selecione uma avaliação</option>
+                </select>
+                <div class="form-text">
+                  Usado principalmente no relatório de avaliação.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Botões de emissão -->
+          <div class="row g-4 mb-4">
+            <div class="col-12 col-md-6 col-xl-3">
+              <button class="report-action-card report-action-complete w-100" id="btnGenerateCompleteReport">
+                <div class="report-action-icon">
+                  <i class="bi bi-file-earmark-richtext"></i>
+                </div>
+                <div class="report-action-title">Relatório Completo</div>
+                <div class="report-action-text">
+                  Dados cadastrais, consultorias, resumo CERNE, financeiro e avaliações detalhadas do período.
+                </div>
+              </button>
+            </div>
+
+            <div class="col-12 col-md-6 col-xl-3">
+              <button class="report-action-card report-action-performance w-100" id="btnGeneratePerformanceReport">
+                <div class="report-action-icon">
+                  <i class="bi bi-bar-chart-line"></i>
+                </div>
+                <div class="report-action-title">Relatório de Desempenho</div>
+                <div class="report-action-text">
+                  Score geral, classificação, notas por eixo e evolução no período, sem perguntas e respostas.
+                </div>
+              </button>
+            </div>
+
+            <div class="col-12 col-md-6 col-xl-3">
+              <button class="report-action-card report-action-financial w-100" id="btnGenerateFinancialReport">
+                <div class="report-action-icon">
+                  <i class="bi bi-cash-coin"></i>
+                </div>
+                <div class="report-action-title">Relatório Financeiro</div>
+                <div class="report-action-text">
+                  Informações financeiras estruturadas e leitura do eixo Capital para o período selecionado.
+                </div>
+              </button>
+            </div>
+
+            <div class="col-12 col-md-6 col-xl-3">
+              <button class="report-action-card report-action-evaluation w-100" id="btnGenerateEvaluationReport">
+                <div class="report-action-icon">
+                  <i class="bi bi-clipboard-data"></i>
+                </div>
+                <div class="report-action-title">Relatório de Avaliação</div>
+                <div class="report-action-text">
+                  Perguntas, respostas, notas, pontuações por eixo e dados do avaliador de uma avaliação específica.
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Área de prévia/resumo contextual -->
           <div class="row g-4">
             <div class="col-12 col-xl-4">
               <div class="app-card h-100">
                 <div class="card-header-lite mb-3">
-                  <h2 class="section-title mb-1">Resumo geral</h2>
-                  <p class="section-subtitle mb-0">Indicadores gerenciais mais úteis para a incubadora.</p>
+                  <h2 class="section-title mb-1">Resumo do contexto</h2>
+                  <p class="section-subtitle mb-0">
+                    Leitura rápida da empresa e do período selecionado.
+                  </p>
                 </div>
                 <div id="reportsSummaryContainer"></div>
               </div>
             </div>
+
             <div class="col-12 col-xl-8">
               <div class="app-card h-100">
                 <div class="card-header-lite mb-3">
-                  <h2 class="section-title mb-1">Histórico de avaliações salvas</h2>
-                  <p class="section-subtitle mb-0">Registros persistidos em memória local do navegador.</p>
+                  <h2 class="section-title mb-1">Histórico disponível</h2>
+                  <p class="section-subtitle mb-0">
+                    Consultorias, avaliações e base de dados que podem compor os relatórios.
+                  </p>
                 </div>
                 <div id="savedEvaluationsContainer"></div>
               </div>
@@ -619,135 +838,11 @@
       <script src="assets/js/calculation-service.js"></script>
       <script src="assets/js/ui-service.js"></script>
       <script src="assets/js/auth-service.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+      <script src="assets/js/report-service.js"></script>
       <script src="assets/js/app.js"></script>
-    </body>
-  </div>
+    </div>
   
-  <!-- Tela de autenticação: aparece antes do usuário entrar no sistema. -->
-  <div id="authScreen" class="auth-screen">
-      <div class="auth-wrapper container-fluid">
-        <div class="row min-vh-100 align-items-center justify-content-center">
-          <div class="col-12 col-md-10 col-lg-8 col-xl-6">
-            <div class="auth-card">
-              <div class="row g-0">
-                <!-- Lado institucional da tela -->
-                <div class="col-lg-5 auth-brand-panel d-none d-lg-flex">
-                  <div>
-                    <div class="brand-icon mb-3">
-                      <i class="bi bi-activity"></i>
-                    </div>
-                    <h2 class="mb-2">StartupPulse</h2>
-                    <p class="mb-0">
-                      Plataforma de monitoramento de empresas incubadas operada pela incubadora.
-                    </p>
-                  </div>
-                </div>
-
-                <!-- Lado funcional da autenticação -->
-                <div class="col-lg-7">
-                  <div class="auth-form-panel">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                      <div>
-                        <h3 class="mb-1" id="authTitle">Entrar</h3>
-                        <p class="text-muted mb-0" id="authSubtitle">
-                          Use seu e-mail e senha para acessar o sistema.
-                        </p>
-                      </div>
-                    </div>
-
-                    <!-- Formulário de login -->
-                    <form id="loginForm">
-                      <div class="mb-3">
-                        <label for="loginEmail" class="form-label">E-mail</label>
-                        <input
-                          type="email"
-                          class="form-control"
-                          id="loginEmail"
-                          placeholder="seuemail@incubadora.com"
-                          required
-                        />
-                      </div>
-
-                      <div class="mb-3">
-                        <label for="loginPassword" class="form-label">Senha</label>
-                        <input
-                          type="password"
-                          class="form-control"
-                          id="loginPassword"
-                          placeholder="Digite sua senha"
-                          required
-                        />
-                      </div>
-
-                      <div class="d-grid mb-3">
-                        <button type="submit" class="btn btn-primary">
-                          <i class="bi bi-box-arrow-in-right"></i>
-                          Entrar
-                        </button>
-                      </div>
-                    </form>
-
-                    <hr class="my-4" />
-
-                    <!-- Formulário de cadastro -->
-                    <form id="registerForm">
-                      <h5 class="mb-3">Cadastrar usuário</h5>
-
-                      <div class="mb-3">
-                        <label for="registerName" class="form-label">Nome</label>
-                        <input
-                          type="text"
-                          class="form-control"
-                          id="registerName"
-                          placeholder="Nome do funcionário"
-                          required
-                        />
-                      </div>
-
-                      <div class="mb-3">
-                        <label for="registerEmail" class="form-label">E-mail</label>
-                        <input
-                          type="email"
-                          class="form-control"
-                          id="registerEmail"
-                          placeholder="novoemail@incubadora.com"
-                          required
-                        />
-                      </div>
-
-                      <div class="mb-3">
-                        <label for="registerPassword" class="form-label">Senha</label>
-                        <input
-                          type="password"
-                          class="form-control"
-                          id="registerPassword"
-                          placeholder="Crie uma senha"
-                          required
-                        />
-                      </div>
-
-                      <div class="d-grid">
-                        <button type="submit" class="btn btn-outline-primary">
-                          <i class="bi bi-person-plus"></i>
-                          Cadastrar usuário
-                        </button>
-                      </div>
-                    </form>
-
-                    <div class="mt-4 small text-muted">
-                      Usuário padrão sugerido: <strong>admin@incubadora.com</strong> / <strong>123456</strong>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="text-center mt-3 text-muted small">
-              MVP local com autenticação em navegador.
-            </div>
-          </div>
-        </div>
-      </div>
-  </div>
-
+  </body>
 </html>

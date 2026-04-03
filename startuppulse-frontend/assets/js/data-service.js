@@ -15,7 +15,10 @@ window.DataService = (() => {
     companies: [],
     evaluationModel: null,
     consultancies: [],
-    savedEvaluations: []
+    financialRecords: [],
+    savedEvaluations: [],
+    reportSections: {},
+    reportTemplates: {}
   };
 
   /* Clonagem simples para evitar mutações acidentais no objeto fonte. */
@@ -29,7 +32,21 @@ window.DataService = (() => {
     const persisted = localStorage.getItem(STORAGE_KEY);
 
     if (persisted) {
-      state = JSON.parse(persisted);
+      const parsedState = JSON.parse(persisted);
+
+      /* 
+        Faz merge defensivo com a estrutura atual do sample data.
+        Isso evita quebrar quando o localStorage for antigo e não tiver os campos novos.
+      */
+      state = {
+        ...deepClone(window.STARTUP_PULSE_SAMPLE_DATA),
+        ...parsedState,
+        financialRecords: parsedState.financialRecords || [],
+        reportSections: parsedState.reportSections || deepClone(window.STARTUP_PULSE_SAMPLE_DATA.reportSections || {}),
+        reportTemplates: parsedState.reportTemplates || deepClone(window.STARTUP_PULSE_SAMPLE_DATA.reportTemplates || {})
+      };
+
+      persist();
       return getState();
     }
 
@@ -89,6 +106,111 @@ window.DataService = (() => {
 
   /* Retorna a configuração do modelo avaliativo. */
   const getEvaluationModel = () => deepClone(state.evaluationModel);
+
+    /* Retorna os registros financeiros cadastrados. */
+  const getFinancialRecords = () => deepClone(state.financialRecords || []);
+
+  /* Retorna os templates de relatório. */
+  const getReportTemplates = () => deepClone(state.reportTemplates || {});
+
+  /* Retorna o catálogo de seções de relatório. */
+  const getReportSections = () => deepClone(state.reportSections || {});
+
+    /* Retorna registros financeiros de uma empresa, opcionalmente filtrados por ano. */
+  const getFinancialRecordsByCompany = (companyId, year = "all") => {
+    return deepClone(state.financialRecords || [])
+      .filter((record) => {
+        const matchesCompany = record.companyId === companyId;
+        const matchesYear = year === "all" || Number(record.year) === Number(year);
+        return matchesCompany && matchesYear;
+      })
+      .sort((a, b) => Number(a.year) - Number(b.year));
+  };
+
+  /* Retorna consultorias de uma empresa, opcionalmente filtradas por ano. */
+  const getConsultanciesByCompany = (companyId, year = "all") => {
+    return deepClone(state.consultancies || [])
+      .filter((consultancy) => {
+        const consultancyYear = String(consultancy.date || "").slice(0, 4);
+        const matchesCompany = consultancy.companyId === companyId;
+        const matchesYear = year === "all" || String(year) === consultancyYear;
+        return matchesCompany && matchesYear;
+      })
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+  };
+
+  /* Retorna avaliações de uma empresa, opcionalmente filtradas por ano. */
+  const getEvaluationsByCompany = (companyId, year = "all") => {
+    return deepClone(state.savedEvaluations || [])
+      .filter((evaluation) => {
+        const evaluationYear =
+          evaluation.year || Number(String(evaluation.date || "").slice(0, 4));
+        const matchesCompany = evaluation.companyId === companyId;
+        const matchesYear = year === "all" || Number(year) === Number(evaluationYear);
+        return matchesCompany && matchesYear;
+      })
+      .sort((a, b) => new Date(a.date) - new Date(b.date));
+  };
+
+  /* Retorna uma avaliação específica pelo ID. */
+  const getEvaluationById = (evaluationId) => {
+    return deepClone((state.savedEvaluations || []).find((evaluation) => evaluation.id === evaluationId));
+  };
+
+    /* 
+    Retorna todos os anos disponíveis para relatórios de uma empresa.
+    Considera consultorias, avaliações e dados financeiros.
+  */
+  const getAvailableReportYearsByCompany = (companyId) => {
+    const consultancyYears = (state.consultancies || [])
+      .filter((item) => item.companyId === companyId)
+      .map((item) => Number(String(item.date || "").slice(0, 4)));
+
+    const evaluationYears = (state.savedEvaluations || [])
+      .filter((item) => item.companyId === companyId)
+      .map((item) => Number(item.year || String(item.date || "").slice(0, 4)));
+
+    const financialYears = (state.financialRecords || [])
+      .filter((item) => item.companyId === companyId)
+      .map((item) => Number(item.year));
+
+    return [...new Set([...consultancyYears, ...evaluationYears, ...financialYears])]
+      .filter((year) => !Number.isNaN(year))
+      .sort((a, b) => b - a);
+  };
+
+    /*
+    Monta o contexto-base de relatório de uma empresa.
+    Essa função não gera PDF.
+    Ela apenas reúne os dados certos, de forma organizada, para a camada de UI ou PDF consumir.
+  */
+  const getReportContext = ({
+    companyId,
+    year = "all",
+    evaluationId = null
+  }) => {
+    const company = getCompanyById(companyId);
+
+    if (!company) {
+      throw new Error("Empresa não encontrada para geração de relatório.");
+    }
+
+    const consultancies = getConsultanciesByCompany(companyId, year);
+    const evaluations = getEvaluationsByCompany(companyId, year);
+    const financialRecords = getFinancialRecordsByCompany(companyId, year);
+    const selectedEvaluation = evaluationId ? getEvaluationById(evaluationId) : null;
+
+    return {
+      company,
+      year,
+      consultancies,
+      evaluations,
+      financialRecords,
+      selectedEvaluation,
+      reportSections: getReportSections(),
+      reportTemplates: getReportTemplates()
+    };
+  };
 
   /* Retorna consultorias, já enriquecidas com nome da empresa. */
   const getConsultancies = () => {
@@ -177,12 +299,14 @@ window.DataService = (() => {
   const exportToExcel = () => {
     const workbook = XLSX.utils.book_new();
 
-    const companiesSheet = XLSX.utils.json_to_sheet(state.companies);
-    const consultanciesSheet = XLSX.utils.json_to_sheet(state.consultancies);
-    const evaluationsSheet = XLSX.utils.json_to_sheet(state.savedEvaluations);
+    const companiesSheet = XLSX.utils.json_to_sheet(state.companies || []);
+    const consultanciesSheet = XLSX.utils.json_to_sheet(state.consultancies || []);
+    const financialSheet = XLSX.utils.json_to_sheet(state.financialRecords || []);
+    const evaluationsSheet = XLSX.utils.json_to_sheet(state.savedEvaluations || []);
 
     XLSX.utils.book_append_sheet(workbook, companiesSheet, "Empresas");
     XLSX.utils.book_append_sheet(workbook, consultanciesSheet, "Consultorias");
+    XLSX.utils.book_append_sheet(workbook, financialSheet, "Financeiro");
     XLSX.utils.book_append_sheet(workbook, evaluationsSheet, "Avaliacoes");
 
     XLSX.writeFile(workbook, "startuppulse-state.xlsx");
@@ -235,11 +359,18 @@ window.DataService = (() => {
             Mantemos o evaluationModel atual, porque ele pertence à configuração da aplicação,
             não ao arquivo operacional da incubadora.
           */
+          const financialRecords = workbook.Sheets.Financeiro
+            ? XLSX.utils.sheet_to_json(workbook.Sheets.Financeiro)
+            : state.financialRecords || [];
+
           state = {
             companies,
             consultancies,
+            financialRecords,
             savedEvaluations,
-            evaluationModel: state.evaluationModel || window.STARTUP_PULSE_SAMPLE_DATA.evaluationModel
+            evaluationModel: state.evaluationModel || window.STARTUP_PULSE_SAMPLE_DATA.evaluationModel,
+            reportSections: state.reportSections || window.STARTUP_PULSE_SAMPLE_DATA.reportSections || {},
+            reportTemplates: state.reportTemplates || window.STARTUP_PULSE_SAMPLE_DATA.reportTemplates || {}
           };
 
           persist();
@@ -262,7 +393,7 @@ window.DataService = (() => {
     return getState();
   };
 
-  return {
+    return {
     initialize,
     getState,
     getCompanies,
@@ -271,9 +402,18 @@ window.DataService = (() => {
     deleteCompany,
     getEvaluationModel,
     getConsultancies,
+    getConsultanciesByCompany,
     saveConsultancy,
+    getFinancialRecords,
+    getFinancialRecordsByCompany,
     getSavedEvaluations,
+    getEvaluationsByCompany,
+    getEvaluationById,
     saveEvaluation,
+    getReportSections,
+    getReportTemplates,
+    getAvailableReportYearsByCompany,
+    getReportContext,
     exportToJson,
     exportToExcel,
     importFromJsonFile,

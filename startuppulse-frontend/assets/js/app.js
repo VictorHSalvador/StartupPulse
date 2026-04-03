@@ -5,14 +5,20 @@
 */
 (() => {
   /* Estado central do front-end. */
-  const appState = {
+    const appState = {
     currentView: "dashboard",
     currentCompanies: [],
     currentConsultancies: [],
     currentSavedEvaluations: [],
+    currentFinancialRecords: [],
+    currentReportTemplates: {},
+    currentReportSections: {},
     evaluationModel: null,
     activeAxisIndex: 0,
     selectedEvaluationCompanyId: null,
+    selectedReportCompanyId: null,
+    selectedReportYear: "all",
+    selectedReportEvaluationId: "",
     draftEvaluation: {
       axes: {}
     }
@@ -143,19 +149,28 @@
   };
 
   /* Copia os dados atuais do DataService para o estado da aplicação. */
-  const hydrateAppState = () => {
+    const hydrateAppState = () => {
     appState.currentCompanies = DataService.getCompanies();
     appState.currentConsultancies = DataService.getConsultancies();
     appState.currentSavedEvaluations = DataService.getSavedEvaluations();
+    appState.currentFinancialRecords = DataService.getFinancialRecords();
+    appState.currentReportTemplates = DataService.getReportTemplates();
+    appState.currentReportSections = DataService.getReportSections();
     appState.evaluationModel = DataService.getEvaluationModel();
 
     /*
-      Caso ainda não exista empresa selecionada para avaliação,
-      escolhemos a primeira para facilitar uso imediato do MVP.
+      Empresa padrão da área de avaliação.
     */
     if (!appState.selectedEvaluationCompanyId && appState.currentCompanies.length) {
       appState.selectedEvaluationCompanyId = appState.currentCompanies[0].id;
       resetDraftEvaluation();
+    }
+
+    /*
+      Empresa padrão da área de relatórios.
+    */
+    if (!appState.selectedReportCompanyId && appState.currentCompanies.length) {
+      appState.selectedReportCompanyId = appState.currentCompanies[0].id;
     }
   };
 
@@ -230,6 +245,91 @@
       "input change",
       renderCompanies
     );
+
+    /* Filtros da tela de relatórios. */
+    $("#reportCompanySelector").on("change", function () {
+      appState.selectedReportCompanyId = $(this).val();
+      appState.selectedReportYear = "all";
+      appState.selectedReportEvaluationId = "";
+
+      populateReportYearSelector();
+      populateReportEvaluationSelector();
+      renderReports();
+    });
+
+    $("#reportYearSelector").on("change", function () {
+      appState.selectedReportYear = $(this).val();
+      appState.selectedReportEvaluationId = "";
+
+      populateReportEvaluationSelector();
+      renderReports();
+    });
+
+    $("#reportEvaluationSelector").on("change", function () {
+      appState.selectedReportEvaluationId = $(this).val();
+      renderReports();
+    });
+
+        /* Botões de emissão de relatório. */
+    $("#btnGenerateCompleteReport").on("click", () => {
+      try {
+        const context = DataService.getReportContext({
+          companyId: appState.selectedReportCompanyId,
+          year: appState.selectedReportYear || "all",
+          evaluationId: appState.selectedReportEvaluationId || null
+        });
+
+        ReportService.generateCompleteReport(context);
+        UiService.showToast("Relatório completo gerado com sucesso.", "success");
+      } catch (error) {
+        UiService.showToast(error.message, "danger");
+      }
+    });
+
+    $("#btnGeneratePerformanceReport").on("click", () => {
+      try {
+        const context = DataService.getReportContext({
+          companyId: appState.selectedReportCompanyId,
+          year: appState.selectedReportYear || "all",
+          evaluationId: appState.selectedReportEvaluationId || null
+        });
+
+        ReportService.generatePerformanceReport(context);
+        UiService.showToast("Relatório de desempenho gerado com sucesso.", "success");
+      } catch (error) {
+        UiService.showToast(error.message, "danger");
+      }
+    });
+
+    $("#btnGenerateFinancialReport").on("click", () => {
+      try {
+        const context = DataService.getReportContext({
+          companyId: appState.selectedReportCompanyId,
+          year: appState.selectedReportYear || "all",
+          evaluationId: appState.selectedReportEvaluationId || null
+        });
+
+        ReportService.generateFinancialReport(context);
+        UiService.showToast("Relatório financeiro gerado com sucesso.", "success");
+      } catch (error) {
+        UiService.showToast(error.message, "danger");
+      }
+    });
+
+    $("#btnGenerateEvaluationReport").on("click", () => {
+      try {
+        const context = DataService.getReportContext({
+          companyId: appState.selectedReportCompanyId,
+          year: appState.selectedReportYear || "all",
+          evaluationId: appState.selectedReportEvaluationId || null
+        });
+
+        ReportService.generateEvaluationReport(context);
+        UiService.showToast("Relatório de avaliação gerado com sucesso.", "success");
+      } catch (error) {
+        UiService.showToast(error.message, "danger");
+      }
+    });
 
     /* Abertura do modal para nova empresa. */
     $("#btnNewCompany").on("click", () => openCompanyModal());
@@ -392,10 +492,69 @@
 
     $("#evaluationCompanySelector").html(companyOptions);
     $("#consultancyCompanyId").html(companyOptions);
+    $("#reportCompanySelector").html(companyOptions);
 
     if (appState.selectedEvaluationCompanyId) {
       $("#evaluationCompanySelector").val(appState.selectedEvaluationCompanyId);
     }
+
+    if (appState.selectedReportCompanyId) {
+      $("#reportCompanySelector").val(appState.selectedReportCompanyId);
+    }
+
+    populateReportYearSelector();
+    populateReportEvaluationSelector();
+  };
+
+  /*
+  Preenche os anos disponíveis para a empresa selecionada na área de relatórios.
+  Sempre inclui a opção "Todos os anos".
+  */
+  const populateReportYearSelector = () => {
+    if (!appState.selectedReportCompanyId) {
+      $("#reportYearSelector").html(`<option value="all">Todos os anos</option>`);
+      return;
+    }
+
+    const years = DataService.getAvailableReportYearsByCompany(appState.selectedReportCompanyId);
+
+    const options = [`<option value="all">Todos os anos</option>`]
+      .concat(years.map((year) => `<option value="${year}">${year}</option>`))
+      .join("");
+
+    $("#reportYearSelector").html(options);
+    $("#reportYearSelector").val(appState.selectedReportYear || "all");
+  };
+
+  /*
+  Preenche o seletor de avaliações específicas da tela de relatórios.
+  Ele respeita a empresa e o ano selecionados.
+  */
+  const populateReportEvaluationSelector = () => {
+    if (!appState.selectedReportCompanyId) {
+      $("#reportEvaluationSelector").html(`<option value="">Selecione uma avaliação</option>`);
+      return;
+    }
+
+    const evaluations = DataService.getEvaluationsByCompany(
+      appState.selectedReportCompanyId,
+      appState.selectedReportYear || "all"
+    );
+
+    const options = [`<option value="">Selecione uma avaliação</option>`]
+      .concat(
+        evaluations.map(
+          (evaluation) => `
+            <option value="${evaluation.id}">
+              ${UiService.escapeHtml(evaluation.date)} - ${UiService.escapeHtml(evaluation.evaluator)}
+            </option>
+          `
+        )
+      )
+      .join("");
+
+    $("#reportEvaluationSelector").html(options);
+    $("#reportEvaluationSelector").val(appState.selectedReportEvaluationId || "");
   };
 
   /* Preenche filtros de ano conforme os dados reais existentes. */
@@ -1234,69 +1393,202 @@
     UiService.showToast("Consultoria salva com sucesso.", "success");
   };
 
-  /* Renderiza relatório geral. */
+  /* Renderiza a área de relatórios com base na empresa e período selecionados. */
   const renderReports = () => {
-    const metrics = CalculationService.calculateDashboardMetrics(
-      appState.currentCompanies,
-      appState.currentConsultancies,
-      appState.currentSavedEvaluations
-    );
+    if (!appState.currentCompanies.length) {
+      $("#reportsSummaryContainer").html(
+        UiService.renderEmptyState(
+          "Nenhuma empresa cadastrada",
+          "Cadastre ou importe empresas para emitir relatórios."
+        )
+      );
 
-    $("#reportsSummaryContainer").html(`
-      <div class="summary-list">
-        <div class="summary-item"><span>Total de empresas</span><strong>${metrics.totalCompanies}</strong></div>
-        <div class="summary-item"><span>Incubadas</span><strong>${metrics.incubating}</strong></div>
-        <div class="summary-item"><span>Graduadas</span><strong>${metrics.graduated}</strong></div>
-        <div class="summary-item"><span>Críticas</span><strong>${metrics.critical}</strong></div>
-        <div class="summary-item"><span>Consultorias agendadas</span><strong>${metrics.scheduledConsultancies}</strong></div>
-        <div class="summary-item"><span>Score médio da carteira</span><strong>${metrics.avgScore.toFixed(2)}</strong></div>
-      </div>
-    `);
-
-    if (!appState.currentSavedEvaluations.length) {
       $("#savedEvaluationsContainer").html(
         UiService.renderEmptyState(
-          "Nenhuma avaliação salva",
-          "As avaliações registradas aparecerão aqui para consulta histórica."
+          "Sem histórico disponível",
+          "Os dados de avaliações, consultorias e finanças aparecerão aqui."
         )
       );
       return;
     }
 
-    $("#savedEvaluationsContainer").html(
-      appState.currentSavedEvaluations
-        .map(
-          (item) => `
-            <div class="saved-evaluation-item">
-              <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
-                <div>
-                  <div class="fw-bold">${UiService.escapeHtml(item.companyName)}</div>
-                  <div class="small text-muted">${UiService.escapeHtml(item.date)} • ${UiService.escapeHtml(item.evaluator)}</div>
+    /*
+      Garante que os seletores estejam sincronizados com o estado.
+    */
+    if (!appState.selectedReportCompanyId) {
+      appState.selectedReportCompanyId = appState.currentCompanies[0].id;
+    }
+
+    $("#reportCompanySelector").val(appState.selectedReportCompanyId);
+    $("#reportYearSelector").val(appState.selectedReportYear || "all");
+    $("#reportEvaluationSelector").val(appState.selectedReportEvaluationId || "");
+
+    const context = DataService.getReportContext({
+      companyId: appState.selectedReportCompanyId,
+      year: appState.selectedReportYear || "all",
+      evaluationId: appState.selectedReportEvaluationId || null
+    });
+
+    const company = context.company;
+    const consultancies = context.consultancies || [];
+    const evaluations = context.evaluations || [];
+    const financialRecords = context.financialRecords || [];
+
+    /*
+      Resumo contextual: agora é da empresa selecionada, e não mais da carteira toda.
+    */
+    $("#reportsSummaryContainer").html(`
+      <div class="report-context-list">
+        <div class="report-context-item">
+          <div>
+            <div class="fw-bold">${UiService.escapeHtml(company.name)}</div>
+            <div class="report-context-label">${UiService.escapeHtml(company.sector)}</div>
+          </div>
+          <div class="report-context-value">${UiService.escapeHtml(company.status)}</div>
+        </div>
+
+        <div class="report-context-item">
+          <span class="report-context-label">Representante</span>
+          <span class="report-context-value">${UiService.escapeHtml(company.representative)}</span>
+        </div>
+
+        <div class="report-context-item">
+          <span class="report-context-label">Classificação atual</span>
+          <span>${UiService.renderClassificationBadge(company.classification)}</span>
+        </div>
+
+        <div class="report-context-item">
+          <span class="report-context-label">Score atual</span>
+          <span class="report-context-value">${Number(company.currentScore || 0).toFixed(2)}</span>
+        </div>
+
+        <div class="report-context-item">
+          <span class="report-context-label">Período selecionado</span>
+          <span class="report-context-value">${appState.selectedReportYear === "all" ? "Todos os anos" : appState.selectedReportYear}</span>
+        </div>
+
+        <div class="report-context-item">
+          <span class="report-context-label">Consultorias no período</span>
+          <span class="report-context-value">${consultancies.length}</span>
+        </div>
+
+        <div class="report-context-item">
+          <span class="report-context-label">Avaliações no período</span>
+          <span class="report-context-value">${evaluations.length}</span>
+        </div>
+
+        <div class="report-context-item">
+          <span class="report-context-label">Registros financeiros no período</span>
+          <span class="report-context-value">${financialRecords.length}</span>
+        </div>
+      </div>
+    `);
+
+    /*
+      Histórico disponível contextualizado.
+    */
+    const evaluationsBlock = evaluations.length
+      ? evaluations
+          .map(
+            (item) => `
+              <div class="report-history-card">
+                <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+                  <div>
+                    <div class="fw-bold">${UiService.escapeHtml(item.companyName)}</div>
+                    <div class="report-history-meta">
+                      ${UiService.escapeHtml(item.date)} • ${UiService.escapeHtml(item.evaluator)}
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="soft-badge bg-light text-dark border">Score ${Number(item.overallScore || 0).toFixed(2)}</span>
+                    ${UiService.renderClassificationBadge(item.classification)}
+                  </div>
                 </div>
-                <div class="d-flex align-items-center gap-2">
-                  <span class="soft-badge bg-light text-dark border">Score ${Number(item.overallScore || 0).toFixed(2)}</span>
-                  ${UiService.renderClassificationBadge(item.classification)}
-                </div>
-              </div>
-              <div class="row g-2">
-                ${Object.entries(item.axisScores || {})
-                  .map(
-                    ([axisName, axisScore]) => `
-                      <div class="col-12 col-md-6">
-                        <div class="summary-item py-2">
-                          <span>${UiService.escapeHtml(axisName)}</span>
-                          <strong>${Number(axisScore || 0).toFixed(2)}</strong>
+
+                <div class="row g-2">
+                  ${Object.entries(item.axisScores || {})
+                    .map(
+                      ([axisName, axisScore]) => `
+                        <div class="col-12 col-md-6">
+                          <div class="summary-item py-2">
+                            <span>${UiService.escapeHtml(axisName)}</span>
+                            <strong>${Number(axisScore || 0).toFixed(2)}</strong>
+                          </div>
                         </div>
-                      </div>
-                    `
-                  )
-                  .join("")}
+                      `
+                    )
+                    .join("")}
+                </div>
               </div>
-            </div>
-          `
-        )
-        .join("")
-    );
+            `
+          )
+          .join("")
+      : `
+        <div class="mb-4">
+          ${UiService.renderEmptyState(
+            "Nenhuma avaliação no período",
+            "Selecione outro ano ou registre novas avaliações para esta empresa."
+          )}
+        </div>
+      `;
+
+    const consultanciesBlock = consultancies.length
+      ? `
+        <div class="report-history-card">
+          <div class="fw-bold mb-2">Consultorias no período</div>
+          ${consultancies
+            .map(
+              (item) => `
+                <div class="mb-2">
+                  <strong>${UiService.escapeHtml(item.date)}</strong> — ${UiService.escapeHtml(item.topic)}
+                  <div class="report-history-meta">
+                    ${UiService.escapeHtml(item.status)} • ${UiService.escapeHtml(item.consultant)}
+                  </div>
+                </div>
+              `
+            )
+            .join("")}
+        </div>
+      `
+      : `
+        <div class="report-history-card">
+          <div class="fw-bold mb-2">Consultorias no período</div>
+          <div class="report-history-meta">Nenhuma consultoria encontrada.</div>
+        </div>
+      `;
+
+    const financialBlock = financialRecords.length
+      ? `
+        <div class="report-history-card">
+          <div class="fw-bold mb-2">Resumo financeiro do período</div>
+          ${financialRecords
+            .map(
+              (record) => `
+                <div class="mb-3">
+                  <strong>${record.year}</strong>
+                  <div class="report-history-meta">
+                    Receita: R$ ${Number(record.revenue || 0).toLocaleString("pt-BR")} •
+                    Lucro: R$ ${Number(record.profit || 0).toLocaleString("pt-BR")} •
+                    Margem bruta: ${Number(record.grossMargin || 0).toFixed(2)}%
+                  </div>
+                </div>
+              `
+            )
+            .join("")}
+        </div>
+      `
+      : `
+        <div class="report-history-card">
+          <div class="fw-bold mb-2">Resumo financeiro do período</div>
+          <div class="report-history-meta">Nenhum registro financeiro encontrado.</div>
+        </div>
+      `;
+
+    $("#savedEvaluationsContainer").html(`
+      ${evaluationsBlock}
+      ${consultanciesBlock}
+      ${financialBlock}
+    `);
   };
 
   /* Inicialização após DOM carregado. */

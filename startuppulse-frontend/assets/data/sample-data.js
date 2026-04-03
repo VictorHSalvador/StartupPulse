@@ -436,9 +436,151 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
     }
   ],
 
+    /*
+    Catálogo de seções reutilizáveis de relatório.
+    A ideia é não deixar a montagem dos relatórios hardcoded.
+    Assim, se amanhã surgir uma nova característica, como balancete,
+    basta criar uma nova seção e vinculá-la aos templates desejados.
+  */
+  reportSections: {
+    company_identity: {
+      label: "Identificação da empresa"
+    },
+    company_overview: {
+      label: "Visão geral da empresa"
+    },
+    consultancy_history: {
+      label: "Histórico de consultorias"
+    },
+    cerne_summary: {
+      label: "Resumo CERNE"
+    },
+    financial_summary: {
+      label: "Resumo financeiro"
+    },
+    evaluation_history: {
+      label: "Histórico de avaliações"
+    },
+    evaluation_detail: {
+      label: "Detalhamento da avaliação"
+    },
+    relevant_notes: {
+      label: "Observações relevantes"
+    }
+  },
+
+  /*
+  Templates de relatórios.
+  Cada tipo de relatório declara quais seções devem entrar.
+  Isso deixa a arquitetura extensível e fácil de manter.
+  */
+  reportTemplates: {
+    complete: {
+      label: "Relatório Completo",
+      sections: [
+        "company_identity",
+        "company_overview",
+        "consultancy_history",
+        "cerne_summary",
+        "financial_summary",
+        "evaluation_history",
+        "relevant_notes"
+      ]
+    },
+    performance: {
+      label: "Relatório de Desempenho",
+      sections: [
+        "company_identity",
+        "cerne_summary",
+        "evaluation_history",
+        "relevant_notes"
+      ]
+    },
+    financial: {
+      label: "Relatório Financeiro",
+      sections: [
+        "company_identity",
+        "financial_summary",
+        "relevant_notes"
+      ]
+    },
+    evaluation: {
+      label: "Relatório de Avaliação",
+      sections: [
+        "company_identity",
+        "evaluation_detail",
+        "relevant_notes"
+      ]
+    }
+  },
+
+  /*
+  Registros financeiros por empresa e por ano.
+  Essa estrutura será usada pelos relatórios financeiro e completo.
+  Ela foi feita para permitir expansão futura, como balancete, DRE simplificada e fluxo de caixa detalhado.
+  */
+  financialRecords: [
+    {
+      id: "fin-001",
+      companyId: "emp-001",
+      year: 2025,
+      revenue: 420000,
+      profit: 78000,
+      grossMargin: 48,
+      contributionMargin: 34,
+      operationalExpenses: 120000,
+      cashFlowSummary: "Fluxo de caixa positivo no segundo semestre.",
+      observations: "Receita recorrente cresceu com contratos enterprise.",
+      sections: ["financial_summary"]
+    },
+    {
+      id: "fin-002",
+      companyId: "emp-001",
+      year: 2026,
+      revenue: 510000,
+      profit: 110000,
+      grossMargin: 52,
+      contributionMargin: 38,
+      operationalExpenses: 145000,
+      cashFlowSummary: "Boa previsibilidade de caixa e expansão da carteira B2B.",
+      observations: "Aumento de margem após revisão de precificação.",
+      sections: ["financial_summary"]
+    },
+    {
+      id: "fin-003",
+      companyId: "emp-004",
+      year: 2025,
+      revenue: 680000,
+      profit: 150000,
+      grossMargin: 57,
+      contributionMargin: 41,
+      operationalExpenses: 190000,
+      cashFlowSummary: "Fluxo de caixa estável e crescimento sustentado.",
+      observations: "Empresa em estágio próximo de graduação.",
+      sections: ["financial_summary"]
+    },
+    {
+      id: "fin-004",
+      companyId: "emp-006",
+      year: 2025,
+      revenue: 90000,
+      profit: -25000,
+      grossMargin: 19,
+      contributionMargin: 8,
+      operationalExpenses: 70000,
+      cashFlowSummary: "Caixa pressionado e baixa previsibilidade.",
+      observations: "Empresa crítica, com necessidade de intervenção comercial e financeira.",
+      sections: ["financial_summary"]
+    }
+  ],
+
   /*
     Histórico inicial de avaliações salvas.
     O sistema continuará adicionando novos registros em memória e no localStorage.
+  */
+    /*
+    Histórico inicial de avaliações salvas.
+    Agora enriquecido para sustentar relatórios completos e relatórios de avaliação específicos.
   */
   savedEvaluations: [
     {
@@ -446,7 +588,9 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
       companyId: "emp-004",
       companyName: "MedVault Health",
       evaluator: "Analista Demo",
-      date: "2026-03-20",
+      evaluatorEmail: "analista@incubadora.com",
+      date: "2025-03-20",
+      year: 2025,
       axisScores: {
         Empreendedor: 4.5,
         Gestão: 4.0,
@@ -455,7 +599,237 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
         Mercado: 4.0
       },
       overallScore: 4.3,
-      classification: "Apta a Graduar"
+      classification: "Apta a Graduar",
+      notes: "Empresa com forte maturidade tecnológica e boa organização interna.",
+      details: {
+        axes: {
+          "axis-entrepreneur": {
+            answers: {
+              "q-ent-1": "12",
+              "q-ent-2": "Equipe com sócios experientes em saúde digital, tecnologia e gestão regulatória.",
+              "q-ent-3": "Integral",
+              "q-ent-4": "Os sócios demonstram alinhamento estratégico e boa divisão de responsabilidades."
+            },
+            indicatorRatings: {
+              "ind-communication": {
+                score: 4,
+                justification: "Boa clareza de liderança e comunicação entre os responsáveis."
+              },
+              "ind-dedication": {
+                score: 5,
+                justification: "Equipe comprometida com dedicação integral ao negócio."
+              },
+              "ind-partner-relations": {
+                score: 4,
+                justification: "Boa harmonia societária, sem sinais relevantes de conflito."
+              }
+            }
+          },
+          "axis-management": {
+            answers: {
+              "q-ges-1": "Sim",
+              "q-ges-2": "Possui metas, planejamento trimestral e responsáveis por área.",
+              "q-ges-3": "Acompanha atividades por reuniões quinzenais e plataforma digital."
+            },
+            indicatorRatings: {
+              "ind-mission": {
+                score: 4,
+                justification: "Missão, visão e valores estão formalizados e disseminados."
+              },
+              "ind-strategy": {
+                score: 4,
+                justification: "Planejamento consistente, embora ainda possa evoluir em métricas."
+              },
+              "ind-activity-tracking": {
+                score: 4,
+                justification: "Existe rotina de acompanhamento com disciplina gerencial."
+              }
+            }
+          },
+          "axis-capital": {
+            answers: {
+              "q-cap-1": "Sim",
+              "q-cap-2": "Existe planejamento financeiro semestral com projeção de despesas e receitas.",
+              "q-cap-3": "Empresa apresenta receita estável e boa perspectiva de sustentabilidade."
+            },
+            indicatorRatings: {
+              "ind-fin-control": {
+                score: 4,
+                justification: "Controle financeiro estruturado e rotineiro."
+              },
+              "ind-fin-planning": {
+                score: 4,
+                justification: "Planejamento adequado, com possibilidade de maior refinamento."
+              },
+              "ind-revenue": {
+                score: 4,
+                justification: "Boa sustentabilidade de receita para o estágio atual."
+              }
+            }
+          },
+          "axis-technology": {
+            answers: {
+              "q-tec-1": "Existe backlog estruturado, coleta de feedback e ciclos de melhoria contínua.",
+              "q-tec-2": "A empresa utiliza testes, validação funcional e monitoramento de falhas."
+            },
+            indicatorRatings: {
+              "ind-product-improvement": {
+                score: 5,
+                justification: "Processo de melhoria tecnológica muito bem estruturado."
+              },
+              "ind-product-quality": {
+                score: 5,
+                justification: "Qualidade percebida alta e rotina de validação consolidada."
+              }
+            }
+          },
+          "axis-market": {
+            answers: {
+              "q-mar-1": "A empresa utiliza networking, inbound e relacionamento com parceiros do setor.",
+              "q-mar-2": "Possui rotina de acompanhamento dos clientes estratégicos.",
+              "q-mar-3": "Precificação baseada em valor e benchmarking setorial."
+            },
+            indicatorRatings: {
+              "ind-prospecting": {
+                score: 4,
+                justification: "Processo comercial consistente, mas ainda com espaço para escala."
+              },
+              "ind-client-relations": {
+                score: 4,
+                justification: "Boa relação com clientes e acompanhamento recorrente."
+              },
+              "ind-pricing": {
+                score: 4,
+                justification: "Política de preços coerente e razoavelmente bem justificada."
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      id: "eval-002",
+      companyId: "emp-001",
+      companyName: "NovaTech Solutions",
+      evaluator: "Victor Analista",
+      evaluatorEmail: "victor@incubadora.com",
+      date: "2026-02-14",
+      year: 2026,
+      axisScores: {
+        Empreendedor: 4.0,
+        Gestão: 4.0,
+        Capital: 4.0,
+        Tecnologia: 5.0,
+        Mercado: 4.0
+      },
+      overallScore: 4.2,
+      classification: "Apta a Graduar",
+      notes: "Empresa madura comercialmente e com forte capacidade tecnológica.",
+      details: {
+        axes: {
+          "axis-entrepreneur": {
+            answers: {
+              "q-ent-1": "9",
+              "q-ent-2": "Equipe com boa formação técnica em software, dados e operações.",
+              "q-ent-3": "Integral",
+              "q-ent-4": "Os sócios possuem alinhamento e boa complementaridade."
+            },
+            indicatorRatings: {
+              "ind-communication": {
+                score: 4,
+                justification: "Boa articulação entre liderança técnica e comercial."
+              },
+              "ind-dedication": {
+                score: 4,
+                justification: "Equipe comprometida e com boa disponibilidade."
+              },
+              "ind-partner-relations": {
+                score: 4,
+                justification: "Relação societária estável."
+              }
+            }
+          },
+          "axis-management": {
+            answers: {
+              "q-ges-1": "Sim",
+              "q-ges-2": "Planejamento com metas trimestrais e rotina de acompanhamento.",
+              "q-ges-3": "Utiliza software de gestão interna e reuniões semanais."
+            },
+            indicatorRatings: {
+              "ind-mission": {
+                score: 4,
+                justification: "Direcionamento institucional claro."
+              },
+              "ind-strategy": {
+                score: 4,
+                justification: "Estratégia bem definida e acompanhada."
+              },
+              "ind-activity-tracking": {
+                score: 4,
+                justification: "Acompanhamento consistente de tarefas e metas."
+              }
+            }
+          },
+          "axis-capital": {
+            answers: {
+              "q-cap-1": "Sim",
+              "q-cap-2": "Planejamento financeiro mensal com revisões de projeção.",
+              "q-cap-3": "Receita crescente e maior previsibilidade de caixa."
+            },
+            indicatorRatings: {
+              "ind-fin-control": {
+                score: 4,
+                justification: "Controle financeiro adequado ao estágio."
+              },
+              "ind-fin-planning": {
+                score: 4,
+                justification: "Planejamento bem executado."
+              },
+              "ind-revenue": {
+                score: 4,
+                justification: "Receita saudável e recorrente."
+              }
+            }
+          },
+          "axis-technology": {
+            answers: {
+              "q-tec-1": "Possui rotina forte de melhoria contínua orientada por feedback.",
+              "q-tec-2": "A empresa mantém rotina de testes e monitoramento de estabilidade."
+            },
+            indicatorRatings: {
+              "ind-product-improvement": {
+                score: 5,
+                justification: "Produto evolui com velocidade e disciplina."
+              },
+              "ind-product-quality": {
+                score: 5,
+                justification: "Qualidade técnica elevada."
+              }
+            }
+          },
+          "axis-market": {
+            answers: {
+              "q-mar-1": "Faz prospecção ativa e trabalha com indicação e eventos.",
+              "q-mar-2": "Relacionamento próximo com contas estratégicas.",
+              "q-mar-3": "Precificação baseada em valor percebido e planos por segmento."
+            },
+            indicatorRatings: {
+              "ind-prospecting": {
+                score: 4,
+                justification: "Boa prospecção, embora ainda com potencial de escala."
+              },
+              "ind-client-relations": {
+                score: 4,
+                justification: "Relacionamento forte e estruturado."
+              },
+              "ind-pricing": {
+                score: 4,
+                justification: "Modelo de preços consistente."
+              }
+            }
+          }
+        }
+      }
     }
   ]
 };
