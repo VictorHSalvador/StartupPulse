@@ -1,0 +1,528 @@
+/* Reset visual pequeno para melhorar consistência geral. */
+:root {
+  /* Variáveis centrais de cor para facilitar ajustes futuros sem reescrever tudo. */
+  --sp-bg: #f4f7fb;
+  --sp-surface: #ffffff;
+  --sp-border: #d8e2ee;
+  --sp-text: #16324f;
+  --sp-muted: #5f748b;
+  --sp-primary: #0f4468;
+  --sp-primary-soft: #0ea5e9;
+  --sp-success: #2e7d32;
+  --sp-warning: #ff8a00;
+  --sp-danger: #d64545;
+  --sp-shadow: 0 12px 30px rgba(15, 68, 104, 0.08);
+}
+
+/* Fundo geral do sistema em tema claro, como definido com você. */
+body {
+  background: var(--sp-bg);
+  color: var(--sp-text);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Remove aparência de botão padrão dos botões usados como abas da navbar. */
+button.nav-link {
+  background: transparent;
+  border: 0;
+}
+
+/* Topbar escura, inspirada no estilo que você gostou no Lovable. */
+.topbar {
+  background: linear-gradient(90deg, #0f4468, #0d3d5d);
+  box-shadow: 0 8px 22px rgba(11, 60, 93, 0.2);
+}
+
+/* Logo simples, mas com destaque institucional. */
+.brand-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #14b8ff, #32d2ff);
+  color: #fff;
+  font-size: 1.2rem;
+}
+
+/* Título da marca. */
+.brand-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Subtítulo da marca. */
+.brand-subtitle {
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+/* Aparência dos links da navbar. */
+.navbar-dark .navbar-nav .nav-link {
+  color: rgba(255, 255, 255, 0.84);
+  padding: 0.65rem 1rem;
+  border-radius: 12px;
+  font-weight: 600;
+  transition: 0.2s ease;
+}
+
+/* Estado hover ajuda percepção de clique. */
+.navbar-dark .navbar-nav .nav-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* Estado ativo da navegação. */
+.navbar-dark .navbar-nav .nav-link.active {
+  background: #18b5ff;
+  color: #fff;
+}
+
+/* Botões da topbar. */
+.btn-topbar {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  font-size: 0.92rem;
+}
+
+/* Hover dos botões da topbar. */
+.btn-topbar:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* Títulos de página seguem hierarquia clara. */
+.page-title {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+/* Subtítulo da página. */
+.page-subtitle {
+  color: var(--sp-muted);
+}
+
+/* Card principal reutilizado em quase todo o projeto. */
+.app-card {
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-border);
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: var(--sp-shadow);
+}
+
+/* Header mais leve para blocos internos. */
+.card-header-lite {
+  border-bottom: 1px solid rgba(216, 226, 238, 0.7);
+  padding-bottom: 1rem;
+}
+
+/* Título de seção. */
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+/* Subtítulo de seção. */
+.section-subtitle {
+  color: var(--sp-muted);
+  font-size: 0.95rem;
+}
+
+/* Badge simples de área. */
+.section-badge {
+  background: rgba(15, 68, 104, 0.08);
+  color: var(--sp-primary);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+/* Card de KPI do dashboard. */
+.kpi-card {
+  background: #fff;
+  border: 1px solid var(--sp-border);
+  border-radius: 18px;
+  padding: 1.25rem;
+  box-shadow: var(--sp-shadow);
+  min-height: 140px;
+}
+
+/* Cabeçalho do KPI. */
+.kpi-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+/* Título pequeno do KPI. */
+.kpi-label {
+  color: var(--sp-muted);
+  font-weight: 600;
+}
+
+/* Valor do KPI com destaque. */
+.kpi-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--sp-primary);
+}
+
+/* Apoio de texto abaixo do KPI. */
+.kpi-helper {
+  color: var(--sp-muted);
+  font-size: 0.92rem;
+}
+
+/* Ícone do KPI. */
+.kpi-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 68, 104, 0.08);
+  color: var(--sp-primary);
+}
+
+/* Alert customizado no topo da página. */
+.app-alert {
+  border-radius: 18px;
+  background: #eef8ff;
+  border: 1px solid #cfe8ff;
+  color: var(--sp-text);
+}
+
+/* Campo de busca com aparência mais limpa. */
+.search-box .form-control,
+.search-box .input-group-text,
+.filter-select,
+.form-select,
+.form-control {
+  border-radius: 14px;
+  border-color: var(--sp-border);
+  min-height: 46px;
+}
+
+/* Remove sombra azul agressiva e troca por foco mais suave. */
+.form-control:focus,
+.form-select:focus {
+  border-color: #7ed7ff;
+  box-shadow: 0 0 0 0.2rem rgba(24, 181, 255, 0.15);
+}
+
+/* Tabela principal de empresas. */
+.company-table thead th {
+  color: var(--sp-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom-color: var(--sp-border);
+}
+
+/* Linhas da tabela. */
+.company-table tbody td {
+  vertical-align: middle;
+  border-color: rgba(216, 226, 238, 0.7);
+}
+
+/* Nome da empresa na tabela. */
+.company-name {
+  font-weight: 700;
+  color: var(--sp-primary);
+}
+
+/* Subtexto de empresa. */
+.company-meta {
+  color: var(--sp-muted);
+  font-size: 0.9rem;
+}
+
+/* Badge flexível para status e classificação. */
+.soft-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border: 1px solid transparent;
+}
+
+/* Card de empresa no modo grid. */
+.company-card {
+  background: #fff;
+  border: 1px solid var(--sp-border);
+  border-radius: 22px;
+  padding: 1.35rem;
+  box-shadow: var(--sp-shadow);
+  height: 100%;
+}
+
+/* Nome do card de empresa. */
+.company-card-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--sp-primary);
+}
+
+/* Bloco de ações do card. */
+.company-card-actions {
+  border-top: 1px solid var(--sp-border);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+/* Lista de atenção do dashboard. */
+.attention-item {
+  display: flex;
+  gap: 0.9rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(216, 226, 238, 0.8);
+}
+
+/* Remove borda da última linha de atenção. */
+.attention-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* Ícone de alerta/atenção. */
+.attention-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+/* Stepper dos eixos CERNE. */
+.stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* Item do stepper. */
+.step-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border-radius: 16px;
+  border: 1px solid var(--sp-border);
+  background: #fff;
+  color: var(--sp-muted);
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+/* Estado ativo do eixo. */
+.step-item.active {
+  background: #0f4468;
+  color: #fff;
+  border-color: #0f4468;
+}
+
+/* Estado concluído do eixo. */
+.step-item.completed {
+  background: rgba(46, 125, 50, 0.1);
+  border-color: rgba(46, 125, 50, 0.18);
+  color: #1f5d23;
+}
+
+/* Número da etapa. */
+.step-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: rgba(15, 68, 104, 0.08);
+}
+
+/* Ajuste do número quando ativo. */
+.step-item.active .step-number {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Card de pergunta da avaliação. */
+.question-card {
+  border: 1px solid var(--sp-border);
+  border-radius: 18px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  background: #fbfdff;
+}
+
+/* Texto da pergunta. */
+.question-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.45rem;
+}
+
+/* Texto de ajuda da pergunta. */
+.question-helper {
+  color: var(--sp-muted);
+  font-size: 0.92rem;
+  margin-bottom: 1rem;
+}
+
+/* Título da área de indicadores associados. */
+.indicator-title {
+  font-size: 0.93rem;
+  color: var(--sp-muted);
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+}
+
+/* Card pequeno de indicador. */
+.indicator-box {
+  background: #fff;
+  border: 1px solid var(--sp-border);
+  border-radius: 16px;
+  padding: 0.9rem;
+}
+
+/* Nota numérica exibida no resumo. */
+.score-pill {
+  min-width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  border: 1px solid var(--sp-border);
+  background: #fff;
+}
+
+/* Área de resumo lateral da avaliação. */
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+/* Item do resumo lateral. */
+.summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  border: 1px solid var(--sp-border);
+  border-radius: 16px;
+  padding: 0.9rem;
+  background: #fff;
+}
+
+/* Card mais discreto para campos auxiliares. */
+.muted-card {
+  background: #f8fbfe;
+  box-shadow: none;
+}
+
+/* Lista de consultorias. */
+.consultancy-item {
+  border: 1px solid var(--sp-border);
+  border-radius: 18px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  background: #fff;
+}
+
+/* Item salvo de avaliação no relatório. */
+.saved-evaluation-item {
+  border: 1px solid var(--sp-border);
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 0.85rem;
+  background: #fff;
+}
+
+/* Ajuste do offcanvas para leitura melhor. */
+.offcanvas {
+  --bs-offcanvas-width: min(560px, 95vw);
+}
+
+/* Responsividade dos controles superiores. */
+@media (max-width: 991.98px) {
+  .topbar-actions {
+    margin-top: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .btn-topbar {
+    width: 100%;
+  }
+}
+
+/* Ajuste em telas pequenas para títulos. */
+@media (max-width: 767.98px) {
+  .page-title {
+    font-size: 1.6rem;
+  }
+
+  .app-card,
+  .kpi-card,
+  .company-card {
+    border-radius: 18px;
+  }
+}
+
+/*----------------------------------------TELA DE LOGIN----------------------------*/
+
+/* Tela inteira de autenticação antes de entrar no sistema. */
+.auth-screen {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(20, 184, 255, 0.14), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(15, 68, 104, 0.12), transparent 30%),
+    var(--sp-bg);
+}
+
+/* Card principal do login/cadastro. */
+.auth-card {
+  background: #fff;
+  border: 1px solid var(--sp-border);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 18px 40px rgba(15, 68, 104, 0.12);
+}
+
+/* Painel visual da marca. */
+.auth-brand-panel {
+  min-height: 100%;
+  padding: 2rem;
+  background: linear-gradient(180deg, #0f4468, #0d3d5d);
+  color: #fff;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Lado dos formulários. */
+.auth-form-panel {
+  padding: 2rem;
+}
+
+/* Nome do usuário logado na topbar. */
+.logged-user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-weight: 600;
+}

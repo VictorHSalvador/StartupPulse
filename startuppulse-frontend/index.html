@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StartupPulse - MVP Front-end</title>
+
+    <!-- Bootstrap é a base visual do projeto, como você pediu. -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <!-- Bootstrap Icons facilita os ícones de navegação e ações rápidas. -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+
+    <!-- CSS principal do projeto. -->
+    <link rel="stylesheet" href="assets/css/style.css" />
+  </head>
+  <body>
+    <!-- Casca principal do sistema: só aparece depois do login. -->
+    <div id="appShell" class="d-none">
+      <!-- Topbar principal do sistema. -->
+      <nav class="navbar navbar-expand-lg navbar-dark topbar sticky-top">
+        <div class="container-fluid px-4">
+          <!-- Marca institucional da plataforma. -->
+          <a class="navbar-brand d-flex align-items-center gap-3" href="#">
+            <div class="brand-icon">
+              <i class="bi bi-activity"></i>
+            </div>
+            <div>
+              <div class="brand-title">StartupPulse</div>
+              <div class="brand-subtitle">CERNE Monitor</div>
+            </div>
+          </a>
+
+          <!-- Botão padrão para colapso em telas pequenas. -->
+          <button
+            class="navbar-toggler"
+            type="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#mainNavbar"
+            aria-controls="mainNavbar"
+            aria-expanded="false"
+            aria-label="Alternar navegação"
+          >
+            <span class="navbar-toggler-icon"></span>
+          </button>
+
+          <div class="collapse navbar-collapse" id="mainNavbar">
+            <!-- Navegação principal do sistema. -->
+            <ul class="navbar-nav mx-auto gap-lg-2">
+              <li class="nav-item">
+                <button class="nav-link active nav-view-btn" data-view="dashboard">
+                  Dashboard
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link nav-view-btn" data-view="companies">
+                  Empresas
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link nav-view-btn" data-view="evaluations">
+                  Avaliações
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link nav-view-btn" data-view="consultancies">
+                  Consultorias
+                </button>
+              </li>
+              <li class="nav-item">
+                <button class="nav-link nav-view-btn" data-view="reports">
+                  Relatórios
+                </button>
+              </li>
+            </ul>
+
+            <!-- Ações globais do operador da incubadora. -->
+             
+            <div class="d-flex align-items-center gap-2 topbar-actions">
+              <div class="logged-user-chip text-white me-2">
+                <i class="bi bi-person-circle"></i>
+                <span id="loggedUserName">Usuário</span>
+              </div>
+
+              <button class="btn btn-topbar" id="btnImportJson">
+                <i class="bi bi-filetype-json"></i>
+                Importar JSON
+              </button>
+
+              <button class="btn btn-topbar" id="btnImportExcel">
+                <i class="bi bi-file-earmark-spreadsheet"></i>
+                Importar Excel
+              </button>
+
+              <button class="btn btn-topbar" id="btnExportJson">
+                <i class="bi bi-download"></i>
+                Exportar JSON
+              </button>
+
+              <button class="btn btn-topbar" id="btnExportExcel">
+                <i class="bi bi-file-earmark-arrow-down"></i>
+                Exportar Excel
+              </button>
+
+              <button class="btn btn-topbar" id="btnLogout">
+                <i class="bi bi-box-arrow-right"></i>
+                Sair
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </nav>
+
+      <!-- Inputs escondidos para importação local de arquivos. -->
+      <input type="file" id="jsonFileInput" accept=".json" hidden />
+      <input type="file" id="excelFileInput" accept=".xlsx,.xls" hidden />
+      
+      <main class="container-fluid px-4 py-4">
+        <!-- Mensagens de contexto para o operador. -->
+        <!-- <section class="mb-4">
+          <div class="alert app-alert d-flex align-items-start gap-3" role="alert">
+            <i class="bi bi-info-circle-fill fs-5"></i>
+            <div>
+              <strong>Modo MVP front-end:</strong>
+              esta versão roda inteiramente no navegador, usa dados locais em JSON/Excel,
+              permite cadastro e avaliação, e já deixa a estrutura pronta para evolução futura
+              para MCDA/ELECTRE-TRI, como discutido a partir do seu material do CERNE e da dissertação. 
+            </div>
+          </div>
+        </section> -->
+
+        <!-- VIEW: DASHBOARD -->
+        <section class="app-view" id="view-dashboard">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+            <div>
+              <h1 class="page-title mb-1">Dashboard</h1>
+              <p class="page-subtitle mb-0">
+                Visão geral da carteira de empresas incubadas.
+              </p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <select class="form-select filter-select" id="dashboardYearFilter">
+                <option value="all">Todos os anos</option>
+              </select>
+              <select class="form-select filter-select" id="dashboardStatusFilter">
+                <option value="all">Todos os status</option>
+                <option value="Incubada">Incubada</option>
+                <option value="Graduada">Graduada</option>
+                <option value="Crítica">Crítica</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Cards KPI do painel principal. -->
+          <div class="row g-3 mb-4" id="dashboardKpis"></div>
+
+          <div class="row g-4">
+            <div class="col-12 col-xxl-8">
+              <div class="app-card p-0 overflow-hidden">
+                <div class="card-header-lite px-4 py-3 d-flex justify-content-between align-items-center">
+                  <div>
+                    <h2 class="section-title mb-1">Empresas monitoradas</h2>
+                    <p class="section-subtitle mb-0">Resumo operacional da incubadora.</p>
+                  </div>
+                  <span class="section-badge" id="dashboardCompanyCountBadge">0 empresas</span>
+                </div>
+                <div class="p-3 p-lg-4">
+                  <div class="input-group search-box mb-3">
+                    <span class="input-group-text bg-white border-end-0">
+                      <i class="bi bi-search"></i>
+                    </span>
+                    <input
+                      type="text"
+                      class="form-control border-start-0"
+                      id="dashboardSearchInput"
+                      placeholder="Pesquisar por nome, setor, representante ou classificação..."
+                    />
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table company-table align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>Empresa</th>
+                          <th>Ano</th>
+                          <th>Status</th>
+                          <th>Score</th>
+                          <th>Classificação</th>
+                          <th class="text-end">Ações</th>
+                        </tr>
+                      </thead>
+                      <tbody id="dashboardCompanyTableBody"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-xxl-4">
+              <div class="app-card h-100">
+                <div class="card-header-lite d-flex justify-content-between align-items-center mb-3">
+                  <div>
+                    <h2 class="section-title mb-1">Atenção do gestor</h2>
+                    <p class="section-subtitle mb-0">Itens que merecem acompanhamento imediato.</p>
+                  </div>
+                </div>
+                <div class="attention-list" id="attentionList"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: EMPRESAS -->
+        <section class="app-view d-none" id="view-companies">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+            <div>
+              <h1 class="page-title mb-1">Empresas</h1>
+              <p class="page-subtitle mb-0">
+                Cadastro, consulta e ações rápidas sobre as empresas incubadas.
+              </p>
+            </div>
+            <button class="btn btn-primary" id="btnNewCompany">
+              <i class="bi bi-plus-lg"></i>
+              Nova empresa
+            </button>
+          </div>
+
+          <div class="app-card mb-4">
+            <div class="row g-3">
+              <div class="col-12 col-lg-5">
+                <div class="input-group search-box">
+                  <span class="input-group-text bg-white border-end-0">
+                    <i class="bi bi-search"></i>
+                  </span>
+                  <input
+                    type="text"
+                    class="form-control border-start-0"
+                    id="companySearchInput"
+                    placeholder="Pesquisar empresa por nome, setor ou representante..."
+                  />
+                </div>
+              </div>
+              <div class="col-6 col-lg-2">
+                <select class="form-select" id="companyYearFilter">
+                  <option value="all">Todos os anos</option>
+                </select>
+              </div>
+              <div class="col-6 col-lg-2">
+                <select class="form-select" id="companyStatusFilter">
+                  <option value="all">Todos os status</option>
+                  <option value="Incubada">Incubada</option>
+                  <option value="Graduada">Graduada</option>
+                  <option value="Crítica">Crítica</option>
+                </select>
+              </div>
+              <div class="col-12 col-lg-3">
+                <select class="form-select" id="companyClassificationFilter">
+                  <option value="all">Todas as classificações</option>
+                  <option value="Inapta">Inapta</option>
+                  <option value="Satisfatória">Satisfatória</option>
+                  <option value="Apta a Graduar">Apta a Graduar</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grid de cards de empresas. -->
+          <div class="row g-4" id="companyCardsContainer"></div>
+        </section>
+
+        <!-- VIEW: AVALIAÇÕES -->
+        <section class="app-view d-none" id="view-evaluations">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+            <div>
+              <h1 class="page-title mb-1">Avaliações</h1>
+              <p class="page-subtitle mb-0">
+                Formulário operacional para a equipe da incubadora coletar evidências e atribuir notas.
+              </p>
+            </div>
+            <div class="d-flex gap-2">
+              <select class="form-select" id="evaluationCompanySelector"></select>
+              <button class="btn btn-outline-primary" id="btnLoadCompanyEvaluation">
+                Carregar empresa
+              </button>
+            </div>
+          </div>
+
+          <!-- Cabeçalho da empresa selecionada para avaliação. -->
+          <div class="app-card mb-4" id="evaluationCompanyHeader">
+            <div class="row g-3 align-items-center">
+              <div class="col-12 col-lg-6">
+                <h2 class="section-title mb-1" id="evaluationCompanyTitle">Selecione uma empresa</h2>
+                <p class="section-subtitle mb-0" id="evaluationCompanyMeta">
+                  Ao carregar uma empresa, as perguntas e indicadores aparecerão aqui.
+                </p>
+              </div>
+              <div class="col-12 col-lg-6">
+                <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                  <span class="soft-badge bg-primary-subtle text-primary-emphasis" id="evaluationCurrentAxisBadge">
+                    Eixo atual: --
+                  </span>
+                  <span class="soft-badge bg-warning-subtle text-warning-emphasis" id="evaluationPendingBadge">
+                    Pendências: --
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stepper dos eixos CERNE. -->
+          <div class="stepper mb-4" id="axisStepper"></div>
+
+          <div class="row g-4">
+            <div class="col-12 col-xl-8">
+              <div class="app-card">
+                <div class="card-header-lite d-flex justify-content-between align-items-center mb-4">
+                  <div>
+                    <h2 class="section-title mb-1" id="axisPanelTitle">Perguntas do eixo</h2>
+                    <p class="section-subtitle mb-0" id="axisPanelSubtitle">
+                      Registre a resposta da empresa, atribua as notas dos indicadores e justifique quando necessário.
+                    </p>
+                  </div>
+                </div>
+                <div id="evaluationQuestionsContainer"></div>
+                <div class="d-flex flex-wrap justify-content-between gap-2 mt-4">
+                  <button class="btn btn-outline-secondary" id="btnPrevAxis">
+                    <i class="bi bi-arrow-left"></i>
+                    Eixo anterior
+                  </button>
+                  <div class="d-flex gap-2">
+                    <button class="btn btn-outline-danger" id="btnClearCurrentAxis">
+                      <i class="bi bi-eraser"></i>
+                      Limpar eixo
+                    </button>
+                    <button class="btn btn-primary" id="btnNextAxis">
+                      Próximo eixo
+                      <i class="bi bi-arrow-right"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-xl-4">
+              <div class="app-card mb-4">
+                <div class="card-header-lite mb-3">
+                  <h2 class="section-title mb-1">Resumo do eixo</h2>
+                  <p class="section-subtitle mb-0">Leitura rápida dos indicadores avaliados.</p>
+                </div>
+                <div id="axisSummaryContainer"></div>
+              </div>
+
+              <div class="app-card">
+                <div class="card-header-lite mb-3">
+                  <h2 class="section-title mb-1">Resultado provisório</h2>
+                  <p class="section-subtitle mb-0">
+                    Regra simples temporária, isolada para futura troca por abordagem multicritério.
+                  </p>
+                </div>
+                <div id="evaluationOverallSummary"></div>
+                <div class="mt-4 d-grid gap-2">
+                  <button class="btn btn-primary" id="btnSaveEvaluation">
+                    <i class="bi bi-floppy"></i>
+                    Salvar avaliação
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: CONSULTORIAS -->
+        <section class="app-view d-none" id="view-consultancies">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+            <div>
+              <h1 class="page-title mb-1">Consultorias</h1>
+              <p class="page-subtitle mb-0">
+                Agenda, histórico e plano de ação das consultorias da incubadora.
+              </p>
+            </div>
+            <button class="btn btn-primary" id="btnNewConsultancy">
+              <i class="bi bi-calendar-plus"></i>
+              Nova consultoria
+            </button>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-12 col-lg-5">
+              <div class="app-card h-100">
+                <div class="card-header-lite mb-3">
+                  <h2 class="section-title mb-1">Cadastrar consultoria</h2>
+                  <p class="section-subtitle mb-0">Agende ou registre uma sessão de acompanhamento.</p>
+                </div>
+                <form id="consultancyForm" class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label">Empresa</label>
+                    <select class="form-select" id="consultancyCompanyId" required></select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Data</label>
+                    <input type="date" class="form-control" id="consultancyDate" required />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" id="consultancyStatus" required>
+                      <option value="Agendada">Agendada</option>
+                      <option value="Realizada">Realizada</option>
+                      <option value="Não compareceu">Não compareceu</option>
+                    </select>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Tema</label>
+                    <input type="text" class="form-control" id="consultancyTopic" required />
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Consultor</label>
+                    <input type="text" class="form-control" id="consultancyConsultant" required />
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Notas da sessão</label>
+                    <textarea class="form-control" id="consultancyNotes" rows="3"></textarea>
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Plano de ação</label>
+                    <textarea class="form-control" id="consultancyActionPlan" rows="4"></textarea>
+                  </div>
+                  <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="bi bi-floppy"></i>
+                      Salvar consultoria
+                    </button>
+                    <button type="reset" class="btn btn-outline-secondary">
+                      Limpar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <div class="col-12 col-lg-7">
+              <div class="app-card h-100">
+                <div class="card-header-lite mb-3 d-flex justify-content-between align-items-center">
+                  <div>
+                    <h2 class="section-title mb-1">Histórico</h2>
+                    <p class="section-subtitle mb-0">Sessões realizadas, pendentes ou não comparecidas.</p>
+                  </div>
+                </div>
+                <div id="consultancyListContainer"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: RELATÓRIOS -->
+        <section class="app-view d-none" id="view-reports">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+            <div>
+              <h1 class="page-title mb-1">Relatórios</h1>
+              <p class="page-subtitle mb-0">
+                Consolidação de histórico, desempenho e preparação para relatórios formais.
+              </p>
+            </div>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-12 col-xl-4">
+              <div class="app-card h-100">
+                <div class="card-header-lite mb-3">
+                  <h2 class="section-title mb-1">Resumo geral</h2>
+                  <p class="section-subtitle mb-0">Indicadores gerenciais mais úteis para a incubadora.</p>
+                </div>
+                <div id="reportsSummaryContainer"></div>
+              </div>
+            </div>
+            <div class="col-12 col-xl-8">
+              <div class="app-card h-100">
+                <div class="card-header-lite mb-3">
+                  <h2 class="section-title mb-1">Histórico de avaliações salvas</h2>
+                  <p class="section-subtitle mb-0">Registros persistidos em memória local do navegador.</p>
+                </div>
+                <div id="savedEvaluationsContainer"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Modal de cadastro/edição de empresa. -->
+      <div class="modal fade" id="companyModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="companyModalTitle">Nova empresa</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+              <form id="companyForm" class="row g-3">
+                <input type="hidden" id="companyId" />
+                <div class="col-md-6">
+                  <label class="form-label">Nome fantasia</label>
+                  <input type="text" class="form-control" id="companyName" required />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Razão social</label>
+                  <input type="text" class="form-control" id="companyCorporateName" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">CNPJ</label>
+                  <input type="text" class="form-control" id="companyCnpj" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Representante</label>
+                  <input type="text" class="form-control" id="companyRepresentative" required />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Email</label>
+                  <input type="email" class="form-control" id="companyEmail" required />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Telefone</label>
+                  <input type="text" class="form-control" id="companyPhone" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Setor</label>
+                  <input type="text" class="form-control" id="companySector" required />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Ano de incubação</label>
+                  <input type="number" class="form-control" id="companyIncubationYear" min="1" max="10" required />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Status</label>
+                  <select class="form-select" id="companyStatus" required>
+                    <option value="Incubada">Incubada</option>
+                    <option value="Graduada">Graduada</option>
+                    <option value="Crítica">Crítica</option>
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Funcionários</label>
+                  <input type="number" class="form-control" id="companyEmployees" min="0" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Capital</label>
+                  <input type="text" class="form-control" id="companyCapital" />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Classificação atual</label>
+                  <select class="form-select" id="companyClassification">
+                    <option value="Inapta">Inapta</option>
+                    <option value="Satisfatória">Satisfatória</option>
+                    <option value="Apta a Graduar">Apta a Graduar</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Produtos/Serviços</label>
+                  <textarea class="form-control" id="companyProducts" rows="3"></textarea>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Observações</label>
+                  <textarea class="form-control" id="companyNotes" rows="3"></textarea>
+                </div>
+                <div class="col-12">
+                  <div class="app-card muted-card">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <div>
+                        <h6 class="mb-1">Campos customizados</h6>
+                        <small class="text-muted">Preenchidos em JSON para facilitar futura expansão.</small>
+                      </div>
+                    </div>
+                    <div class="row g-3" id="customFieldsContainer"></div>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="button" class="btn btn-primary" id="btnSaveCompany">Salvar empresa</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Offcanvas para detalhe rápido da empresa. -->
+      <div class="offcanvas offcanvas-end" tabindex="-1" id="companyDetailCanvas" aria-labelledby="companyDetailCanvasLabel">
+        <div class="offcanvas-header">
+          <div>
+            <h5 class="offcanvas-title" id="companyDetailCanvasLabel">Detalhe da empresa</h5>
+            <small class="text-muted">Visão rápida da empresa monitorada.</small>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+        </div>
+        <div class="offcanvas-body" id="companyDetailCanvasBody"></div>
+      </div>
+
+      <!-- Área de toast para feedback do sistema. -->
+      <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toastContainer"></div>
+
+      <!-- jQuery foi solicitado como base do projeto. -->
+      <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+      <!-- Bootstrap JS para modal, offcanvas e outros componentes. -->
+      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+      <!-- Biblioteca de planilhas para importar/exportar Excel diretamente no navegador. -->
+      <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+      <!-- Dados iniciais do MVP. -->
+      <script src="assets/data/sample-data.js"></script>
+
+      <!-- Serviços e aplicação principal. -->
+      <script src="assets/js/data-service.js"></script>
+      <script src="assets/js/calculation-service.js"></script>
+      <script src="assets/js/ui-service.js"></script>
+      <script src="assets/js/auth-service.js"></script>
+      <script src="assets/js/app.js"></script>
+    </body>
+  </div>
+  
+  <!-- Tela de autenticação: aparece antes do usuário entrar no sistema. -->
+  <div id="authScreen" class="auth-screen">
+      <div class="auth-wrapper container-fluid">
+        <div class="row min-vh-100 align-items-center justify-content-center">
+          <div class="col-12 col-md-10 col-lg-8 col-xl-6">
+            <div class="auth-card">
+              <div class="row g-0">
+                <!-- Lado institucional da tela -->
+                <div class="col-lg-5 auth-brand-panel d-none d-lg-flex">
+                  <div>
+                    <div class="brand-icon mb-3">
+                      <i class="bi bi-activity"></i>
+                    </div>
+                    <h2 class="mb-2">StartupPulse</h2>
+                    <p class="mb-0">
+                      Plataforma de monitoramento de empresas incubadas operada pela incubadora.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Lado funcional da autenticação -->
+                <div class="col-lg-7">
+                  <div class="auth-form-panel">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                      <div>
+                        <h3 class="mb-1" id="authTitle">Entrar</h3>
+                        <p class="text-muted mb-0" id="authSubtitle">
+                          Use seu e-mail e senha para acessar o sistema.
+                        </p>
+                      </div>
+                    </div>
+
+                    <!-- Formulário de login -->
+                    <form id="loginForm">
+                      <div class="mb-3">
+                        <label for="loginEmail" class="form-label">E-mail</label>
+                        <input
+                          type="email"
+                          class="form-control"
+                          id="loginEmail"
+                          placeholder="seuemail@incubadora.com"
+                          required
+                        />
+                      </div>
+
+                      <div class="mb-3">
+                        <label for="loginPassword" class="form-label">Senha</label>
+                        <input
+                          type="password"
+                          class="form-control"
+                          id="loginPassword"
+                          placeholder="Digite sua senha"
+                          required
+                        />
+                      </div>
+
+                      <div class="d-grid mb-3">
+                        <button type="submit" class="btn btn-primary">
+                          <i class="bi bi-box-arrow-in-right"></i>
+                          Entrar
+                        </button>
+                      </div>
+                    </form>
+
+                    <hr class="my-4" />
+
+                    <!-- Formulário de cadastro -->
+                    <form id="registerForm">
+                      <h5 class="mb-3">Cadastrar usuário</h5>
+
+                      <div class="mb-3">
+                        <label for="registerName" class="form-label">Nome</label>
+                        <input
+                          type="text"
+                          class="form-control"
+                          id="registerName"
+                          placeholder="Nome do funcionário"
+                          required
+                        />
+                      </div>
+
+                      <div class="mb-3">
+                        <label for="registerEmail" class="form-label">E-mail</label>
+                        <input
+                          type="email"
+                          class="form-control"
+                          id="registerEmail"
+                          placeholder="novoemail@incubadora.com"
+                          required
+                        />
+                      </div>
+
+                      <div class="mb-3">
+                        <label for="registerPassword" class="form-label">Senha</label>
+                        <input
+                          type="password"
+                          class="form-control"
+                          id="registerPassword"
+                          placeholder="Crie uma senha"
+                          required
+                        />
+                      </div>
+
+                      <div class="d-grid">
+                        <button type="submit" class="btn btn-outline-primary">
+                          <i class="bi bi-person-plus"></i>
+                          Cadastrar usuário
+                        </button>
+                      </div>
+                    </form>
+
+                    <div class="mt-4 small text-muted">
+                      Usuário padrão sugerido: <strong>admin@incubadora.com</strong> / <strong>123456</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-center mt-3 text-muted small">
+              MVP local com autenticação em navegador.
+            </div>
+          </div>
+        </div>
+      </div>
+  </div>
+
+</html>
