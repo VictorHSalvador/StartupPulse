@@ -19,6 +19,7 @@
     selectedReportCompanyId: null,
     selectedReportYear: "all",
     selectedReportEvaluationId: "",
+    selectedNotificationCompanyId: null,
     draftEvaluation: {
       axes: {}
     },
@@ -172,6 +173,13 @@
     */
     if (!appState.selectedReportCompanyId && appState.currentCompanies.length) {
       appState.selectedReportCompanyId = appState.currentCompanies[0].id;
+    }
+
+    if (
+      appState.selectedNotificationCompanyId &&
+      !appState.currentCompanies.some((company) => company.id === appState.selectedNotificationCompanyId)
+    ) {
+      appState.selectedNotificationCompanyId = null;
     }
   };
 
@@ -448,6 +456,7 @@
     /* Notificações: seleção de empresa */
     $("#notificationCompanyId").on("change", function () {
       const companyId = $(this).val();
+      appState.selectedNotificationCompanyId = companyId || null;
       updateNotificationCompanyInfo(companyId);
     });
 
@@ -460,6 +469,17 @@
     $("#notificationForm").on("submit", function (event) {
       event.preventDefault();
       handleSaveNotification();
+    });
+
+    $("#notificationForm").on("reset", function () {
+      appState.selectedNotificationCompanyId = null;
+      appState.selectedNotificationFile = null;
+      setTimeout(() => {
+        $("#notificationCompanyId").val("");
+        $("#notificationCompanyEmail").val("");
+        $("#filePreview").empty();
+        updateNotificationCompanyInfo("");
+      }, 0);
     });
   };
 
@@ -533,8 +553,6 @@
     $("#evaluationCompanySelector").html(companyOptions);
     $("#consultancyCompanyId").html(companyOptions);
     $("#reportCompanySelector").html(companyOptions);
-    // Use the exact same options as the evaluation selector so the lists stay in sync
-    // Keep a placeholder as the first option for clarity in the UI.
     $("#notificationCompanyId").html(`<option value="">Selecione uma empresa...</option>` + companyOptions);
 
     if (appState.selectedEvaluationCompanyId) {
@@ -543,6 +561,10 @@
 
     if (appState.selectedReportCompanyId) {
       $("#reportCompanySelector").val(appState.selectedReportCompanyId);
+    }
+
+    if (appState.selectedNotificationCompanyId) {
+      $("#notificationCompanyId").val(appState.selectedNotificationCompanyId);
     }
 
     populateReportYearSelector();
@@ -1438,11 +1460,17 @@
 
   /* Atualiza as informações da empresa selecionada no formulário de notificações. */
   const updateNotificationCompanyInfo = (companyId) => {
+    if (!companyId) {
+      $("#notificationCompanyEmail").val("");
+      $("#notificationCompanyInfo").html("<p class=\"mb-0\">Selecione uma empresa para visualizar seus dados.</p>");
+      return;
+    }
+
     const company = DataService.getCompanyById(companyId);
 
     if (!company) {
       $("#notificationCompanyEmail").val("");
-      $("#notificationCompanyInfo").html("<p class=\"mb-0\">Selecione uma empresa para visualizar seus dados.</p>");
+      $("#notificationCompanyInfo").html("<p class=\"mb-0\">Empresa não encontrada.</p>");
       return;
     }
 
@@ -1589,23 +1617,15 @@
   const renderNotifications = () => {
     populateSharedSelectors();
     const $sel = $("#notificationCompanyId");
-    try {
-      console.info("renderNotifications: notification select found=", $sel.length, "children=", $sel.children().length);
-    } catch (e) {}
-    // Select the first non-empty option (skip placeholder with empty value)
-    const firstNonEmpty = $sel
-      .find("option")
-      .filter(function () {
-        return $(this).val() && $(this).val().length > 0;
-      })
-      .first()
-      .val();
 
-    if (firstNonEmpty) {
-      $sel.val(firstNonEmpty).trigger("change");
-    } else {
+    if (!appState.selectedNotificationCompanyId) {
+      $sel.val("");
       updateNotificationCompanyInfo("");
+      return;
     }
+
+    $sel.val(appState.selectedNotificationCompanyId);
+    updateNotificationCompanyInfo(appState.selectedNotificationCompanyId);
   };
 
   /* Salva e envia notificação. */
@@ -1650,6 +1670,7 @@
     /* Limpa o formulário */
     $("#notificationForm")[0].reset();
     appState.selectedNotificationFile = null;
+    appState.selectedNotificationCompanyId = null;
     $("#filePreview").empty();
     $("#notificationCompanyId").val("").trigger("change");
     $("#notificationCompanyEmail").val("");

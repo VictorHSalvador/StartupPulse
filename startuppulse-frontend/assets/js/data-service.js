@@ -24,6 +24,36 @@ window.DataService = (() => {
   /* Clonagem simples para evitar mutações acidentais no objeto fonte. */
   const deepClone = (value) => JSON.parse(JSON.stringify(value));
 
+  const getSampleState = () => deepClone(window.STARTUP_PULSE_SAMPLE_DATA || {});
+
+  const hasUsableCompanies = (companies) => {
+    return Array.isArray(companies) && companies.some((company) => company?.id && company?.name);
+  };
+
+  const normalizeState = (incomingState = {}) => {
+    const sampleState = getSampleState();
+
+    return {
+      ...sampleState,
+      ...incomingState,
+      companies: hasUsableCompanies(incomingState.companies)
+        ? incomingState.companies
+        : sampleState.companies || [],
+      evaluationModel: incomingState.evaluationModel || sampleState.evaluationModel || null,
+      consultancies: Array.isArray(incomingState.consultancies)
+        ? incomingState.consultancies
+        : sampleState.consultancies || [],
+      financialRecords: Array.isArray(incomingState.financialRecords)
+        ? incomingState.financialRecords
+        : sampleState.financialRecords || [],
+      savedEvaluations: Array.isArray(incomingState.savedEvaluations)
+        ? incomingState.savedEvaluations
+        : sampleState.savedEvaluations || [],
+      reportSections: incomingState.reportSections || sampleState.reportSections || {},
+      reportTemplates: incomingState.reportTemplates || sampleState.reportTemplates || {}
+    };
+  };
+
   /* Gera IDs simples e legíveis para cadastros locais do MVP. */
   const generateId = (prefix) => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
@@ -38,13 +68,7 @@ window.DataService = (() => {
         Faz merge defensivo com a estrutura atual do sample data.
         Isso evita quebrar quando o localStorage for antigo e não tiver os campos novos.
       */
-      state = {
-        ...deepClone(window.STARTUP_PULSE_SAMPLE_DATA),
-        ...parsedState,
-        financialRecords: parsedState.financialRecords || [],
-        reportSections: parsedState.reportSections || deepClone(window.STARTUP_PULSE_SAMPLE_DATA.reportSections || {}),
-        reportTemplates: parsedState.reportTemplates || deepClone(window.STARTUP_PULSE_SAMPLE_DATA.reportTemplates || {})
-      };
+      state = normalizeState(parsedState);
 
       persist();
       return getState();
@@ -65,7 +89,7 @@ window.DataService = (() => {
 
   /* Atualiza o estado inteiro quando houver importação externa. */
   const replaceState = (newState) => {
-    state = deepClone(newState);
+    state = normalizeState(newState);
     persist();
     return getState();
   };
@@ -75,8 +99,10 @@ window.DataService = (() => {
     deepClone(state.companies).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
 
   /* Busca uma empresa específica pelo ID. */
-  const getCompanyById = (companyId) =>
-    deepClone(state.companies.find((company) => company.id === companyId));
+  const getCompanyById = (companyId) => {
+    const company = state.companies.find((item) => item.id === companyId);
+    return company ? deepClone(company) : null;
+  };
 
   /* Cria ou atualiza uma empresa. */
   const saveCompany = (companyPayload) => {
