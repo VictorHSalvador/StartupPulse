@@ -206,6 +206,11 @@
                   Relatórios
                 </button>
               </li>
+              <li class="nav-item">
+                <button class="nav-link nav-view-btn" data-view="notifications">
+                  Notificação
+                </button>
+              </li>
             </ul>
 
             <!-- Ações globais do operador da incubadora. -->
@@ -249,6 +254,7 @@
       <!-- Inputs escondidos para importação local de arquivos. -->
       <input type="file" id="jsonFileInput" accept=".json" hidden />
       <input type="file" id="excelFileInput" accept=".xlsx,.xls" hidden />
+      <input type="file" id="notificationFileInput" accept=".pdf,.doc,.docx,.xlsx,.xls,.jpg,.jpeg,.png" hidden />
       
       <main class="container-fluid px-4 py-4">
         <!-- Mensagens de contexto para o operador. -->
@@ -704,6 +710,92 @@
                   </p>
                 </div>
                 <div id="savedEvaluationsContainer"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: NOTIFICAÇÕES -->
+        <section class="app-view d-none" id="view-notifications">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+            <div>
+              <h1 class="page-title mb-1">Notificação</h1>
+              <p class="page-subtitle mb-0">
+                Enviar notificações e comunicados para as empresas incubadas.
+              </p>
+            </div>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-12 col-lg-8">
+              <div class="app-card">
+                <div class="card-header-lite mb-4">
+                  <h2 class="section-title mb-1">Novo comunicado</h2>
+                  <p class="section-subtitle mb-0">Preencha o formulário para enviar uma notificação para a empresa.</p>
+                </div>
+
+                <form id="notificationForm" class="row g-3">
+                  <!-- Seletor de Empresa -->
+                  <div class="col-12">
+                    <label for="notificationCompanyId" class="form-label">Empresa <span class="text-danger">*</span></label>
+                    <select class="form-select" id="notificationCompanyId" required>
+                      <option value="">Selecione uma empresa...</option>
+                    </select>
+                  </div>
+
+                  <!-- Email do Representante (somente leitura) -->
+                  <div class="col-12">
+                    <label for="notificationCompanyEmail" class="form-label">Email do representante</label>
+                    <div class="input-group">
+                      <span class="input-group-text bg-white">
+                        <i class="bi bi-envelope"></i>
+                      </span>
+                      <input type="email" class="form-control" id="notificationCompanyEmail" readonly />
+                    </div>
+                    <small class="text-muted d-block mt-2">Preenchido automaticamente ao selecionar a empresa.</small>
+                  </div>
+
+                  <!-- Descrição/Texto -->
+                  <div class="col-12">
+                    <label for="notificationDescription" class="form-label">Descrição <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="notificationDescription" rows="5" placeholder="Digite o conteúdo da notificação..." required></textarea>
+                  </div>
+
+                  <!-- Upload de Arquivo -->
+                  <div class="col-12">
+                    <label for="notificationFile" class="form-label">Anexar documento <span class="text-muted">(opcional)</span></label>
+                    <div class="form-control-file-wrapper">
+                      <input type="file" class="form-control" id="notificationFile" accept=".pdf,.doc,.docx,.xlsx,.xls,.jpg,.jpeg,.png" />
+                      <small class="text-muted d-block mt-2">Formatos aceitos: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (máx. 10MB)</small>
+                    </div>
+                    <div class="mt-2" id="filePreview"></div>
+                  </div>
+
+                  <!-- Botões -->
+                  <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="bi bi-send"></i>
+                      Enviar notificação
+                    </button>
+                    <button type="reset" class="btn btn-outline-secondary">
+                      <i class="bi bi-arrow-clockwise"></i>
+                      Limpar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- Painel de informações -->
+            <div class="col-12 col-lg-4">
+              <div class="app-card muted-card h-100">
+                <div class="card-header-lite mb-3">
+                  <h2 class="section-title mb-1">Informações da empresa</h2>
+                  <p class="section-subtitle mb-0">Dados do representante selecionado.</p>
+                </div>
+                <div id="notificationCompanyInfo" class="text-muted small">
+                  <p class="mb-0">Selecione uma empresa para visualizar seus dados.</p>
+                </div>
               </div>
             </div>
           </div>

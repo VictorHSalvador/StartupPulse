@@ -21,7 +21,8 @@
     selectedReportEvaluationId: "",
     draftEvaluation: {
       axes: {}
-    }
+    },
+    selectedNotificationFile: null
   };
 
   /* Instâncias do Bootstrap usadas na interface. */
@@ -443,6 +444,23 @@
 
     /* Salva consultoria. */
     $("#consultancyForm").on("submit", handleSaveConsultancy);
+
+    /* Notificações: seleção de empresa */
+    $("#notificationCompanyId").on("change", function () {
+      const companyId = $(this).val();
+      updateNotificationCompanyInfo(companyId);
+    });
+
+    /* Notificações: seleção de arquivo */
+    $("#notificationFile").on("change", function () {
+      handleNotificationFileSelect(this.files?.[0]);
+    });
+
+    /* Notificações: submit do formulário */
+    $("#notificationForm").on("submit", function (event) {
+      event.preventDefault();
+      handleSaveNotification();
+    });
   };
 
   /* Alterna entre as views principais. */
@@ -460,6 +478,7 @@
     if (viewName === "evaluations") renderEvaluations();
     if (viewName === "consultancies") renderConsultancies();
     if (viewName === "reports") renderReports();
+    if (viewName === "notifications") renderNotifications();
   };
 
   /* Renderiza todas as áreas necessárias. */
@@ -471,6 +490,7 @@
     renderEvaluations();
     renderConsultancies();
     renderReports();
+    renderNotifications();
   };
 
   /* Atualiza o estado vindo do DataService e re-renderiza. */
@@ -479,20 +499,43 @@
     renderEverything();
   };
 
+  const getCompanyListForSelectors = () => {
+    return appState.currentCompanies.length ? appState.currentCompanies : DataService.getCompanies();
+  };
+
+  const buildCompanyOptionsHtml = () => {
+    const companies = getCompanyListForSelectors();
+    try {
+      console.info("buildCompanyOptionsHtml: companiesCount=", companies.length);
+    } catch (e) {
+      /* ignore logging errors in environments without console */
+    }
+
+    return companies
+      .map(function (company) {
+        return (
+          '<option value="' +
+          company.id +
+          '">' +
+          UiService.escapeHtml(company.name) +
+          ' - ' +
+          UiService.escapeHtml(company.sector) +
+          '</option>'
+        );
+      })
+      .join("");
+  };
+
   /* Preenche selects que dependem da lista de empresas. */
   const populateSharedSelectors = () => {
-    const companyOptions = appState.currentCompanies
-      .map(
-        (company) =>
-          `<option value="${company.id}">${UiService.escapeHtml(company.name)} - ${UiService.escapeHtml(
-            company.sector
-          )}</option>`
-      )
-      .join("");
+    const companyOptions = buildCompanyOptionsHtml();
 
     $("#evaluationCompanySelector").html(companyOptions);
     $("#consultancyCompanyId").html(companyOptions);
     $("#reportCompanySelector").html(companyOptions);
+    // Use the exact same options as the evaluation selector so the lists stay in sync
+    // Keep a placeholder as the first option for clarity in the UI.
+    $("#notificationCompanyId").html(`<option value="">Selecione uma empresa...</option>` + companyOptions);
 
     if (appState.selectedEvaluationCompanyId) {
       $("#evaluationCompanySelector").val(appState.selectedEvaluationCompanyId);
@@ -1391,6 +1434,269 @@
     $("#consultancyForm")[0].reset();
     refreshDataAndRender();
     UiService.showToast("Consultoria salva com sucesso.", "success");
+  };
+
+  /* Atualiza as informações da empresa selecionada no formulário de notificações. */
+  const updateNotificationCompanyInfo = (companyId) => {
+    const company = DataService.getCompanyById(companyId);
+
+    if (!company) {
+      $("#notificationCompanyEmail").val("");
+      $("#notificationCompanyInfo").html("<p class=\"mb-0\">Selecione uma empresa para visualizar seus dados.</p>");
+      return;
+    }
+
+    /* Preenche o email automaticamente */
+    $("#notificationCompanyEmail").val(company.email || "");
+
+    const customFieldsHtml = Object.entries(company.customFields || {}).map(
+      ([key, value]) => `
+        <div class="company-info-line">
+          <span class="company-info-label">${UiService.escapeHtml(key)}:</span>
+          <span class="company-info-value">${UiService.escapeHtml(value || "-")}</span>
+        </div>`
+    ).join("");
+
+    /* Renderiza todas as informações da empresa cadastrada */
+    const companyInfoHtml = `
+      <div class="company-info-line">
+        <span class="company-info-label">Nome fantasia:</span>
+        <span class="company-info-value"><strong>${UiService.escapeHtml(company.name)}</strong></span>
+      </div>
+      <div class="company-info-line">
+        <span class="company-info-label">Razão social:</span>
+        <span class="company-info-value">${UiService.escapeHtml(company.corporateName || "-")}</span>
+      </div>
+      <div class="company-info-line">
+        <span class="company-info-label">CNPJ:</span>
+        <span class="company-info-value">${UiService.escapeHtml(company.cnpj || "-")}</span>
+      </div>
+      <div class="company-info-line">
+        <span class="company-info-label">Setor:</span>
+        <span class="company-info-value">${UiService.escapeHtml(company.sector || "-")}</span>
+      </div>
+      <div class="company-info-line">
+        <span class="company-info-label">Representante:</span>
+        <span class="company-info-value">${UiService.escapeHtml(company.representative || "-")}</span>
+      </div>
+      <div class="company-info-line">
+        <span class="company-info-label">Email:</span>
+        <span class="company-info-value"><a href="mailto:${UiService.escapeHtml(company.email)}" class="text-primary">${UiService.escapeHtml(company.email || "-")}</a></span>
+      </div>
+      <div class="company-info-line">
+        <span class="company-info-label">Telefone:</span>
+        <span class="company-info-value">${UiService.escapeHtml(company.phone || "-")}</span>
+      </div>
+      <div class="company-info-line">
+        <span class="company-info-label">Ano de incubação:</span>
+        <span class="company-info-value">${UiService.escapeHtml(company.incubationYear || "-")}</span>
+      </div>
+      <div class="company-info-line">
+        <span class="company-info-label">Status:</span>
+        <span class="company-info-value">${UiService.renderStatusBadge(company.status)}</span>
+      </div>
+      <div class="company-info-line">
+        <span class="company-info-label">Classificação:</span>
+        <span class="company-info-value">${UiService.escapeHtml(company.classification || "-")}</span>
+      </div>
+      <div class="company-info-line">
+        <span class="company-info-label">Score atual:</span>
+        <span class="company-info-value">${UiService.escapeHtml(
+          company.currentScore != null && company.currentScore !== "" ? Number(company.currentScore).toFixed(2) : "-"
+        )}</span>
+      </div>
+      <div class="company-info-line">
+        <span class="company-info-label">Funcionários:</span>
+        <span class="company-info-value">${UiService.escapeHtml(
+          company.employees != null && company.employees !== "" ? company.employees : "-"
+        )}</span>
+      </div>
+      <div class="company-info-line">
+        <span class="company-info-label">Capital:</span>
+        <span class="company-info-value">${UiService.escapeHtml(company.capital || "-")}</span>
+      </div>
+      <div class="company-info-line">
+        <span class="company-info-label">Produtos/Serviços:</span>
+        <span class="company-info-value">${UiService.escapeHtml(company.products || "-")}</span>
+      </div>
+      <div class="company-info-line">
+        <span class="company-info-label">Observações:</span>
+        <span class="company-info-value">${UiService.escapeHtml(company.notes || "-")}</span>
+      </div>
+      ${customFieldsHtml}
+    `;
+
+    $("#notificationCompanyInfo").html(companyInfoHtml);
+  };
+
+  /* Gerencia a seleção de arquivo para notificação. */
+  const handleNotificationFileSelect = (file) => {
+    if (!file) {
+      appState.selectedNotificationFile = null;
+      $("#filePreview").empty();
+      return;
+    }
+
+    /* Validações básicas de arquivo */
+    const maxSizeMB = 10;
+    const maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+    if (file.size > maxSizeBytes) {
+      UiService.showToast(`Arquivo muito grande. Máximo: ${maxSizeMB}MB`, "danger");
+      $("#notificationFile").val("");
+      appState.selectedNotificationFile = null;
+      $("#filePreview").empty();
+      return;
+    }
+
+    /* Armazena o arquivo no estado */
+    appState.selectedNotificationFile = file;
+
+    /* Exibe preview do arquivo */
+    const fileSize = (file.size / 1024).toFixed(2); /* Em KB */
+    const fileIcon = getFileIcon(file.type);
+    const filePreviewHtml = `
+      <div class="file-badge">
+        <i class="bi ${fileIcon}"></i>
+        <span>${UiService.escapeHtml(file.name)} (${fileSize}KB)</span>
+        <button type="button" class="file-remove-btn" id="btnRemoveFile">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+    `;
+
+    $("#filePreview").html(filePreviewHtml);
+
+    /* Handler para remover arquivo */
+    $("#btnRemoveFile").on("click", function (e) {
+      e.preventDefault();
+      $("#notificationFile").val("");
+      appState.selectedNotificationFile = null;
+      $("#filePreview").empty();
+    });
+  };
+
+  /* Retorna o ícone apropriado para o tipo de arquivo. */
+  const getFileIcon = (fileType) => {
+    if (fileType.includes("pdf")) return "bi-file-pdf-fill";
+    if (fileType.includes("word")) return "bi-file-word-fill";
+    if (fileType.includes("spreadsheet") || fileType.includes("excel")) return "bi-file-earmark-spreadsheet-fill";
+    if (fileType.includes("image")) return "bi-file-image-fill";
+    return "bi-file-earmark-fill";
+  };
+
+  /* Renderiza a área de notificações. */
+  const renderNotifications = () => {
+    populateSharedSelectors();
+    const $sel = $("#notificationCompanyId");
+    try {
+      console.info("renderNotifications: notification select found=", $sel.length, "children=", $sel.children().length);
+    } catch (e) {}
+    // Select the first non-empty option (skip placeholder with empty value)
+    const firstNonEmpty = $sel
+      .find("option")
+      .filter(function () {
+        return $(this).val() && $(this).val().length > 0;
+      })
+      .first()
+      .val();
+
+    if (firstNonEmpty) {
+      $sel.val(firstNonEmpty).trigger("change");
+    } else {
+      updateNotificationCompanyInfo("");
+    }
+  };
+
+  /* Salva e envia notificação. */
+  const handleSaveNotification = () => {
+    const companyId = $("#notificationCompanyId").val();
+    const email = $("#notificationCompanyEmail").val();
+    const description = $("#notificationDescription").val();
+
+    /* Validações */
+    if (!companyId) {
+      UiService.showToast("Selecione uma empresa.", "warning");
+      return;
+    }
+
+    if (!description || description.trim().length === 0) {
+      UiService.showToast("Escreva uma descrição para a notificação.", "warning");
+      return;
+    }
+
+    if (!email || email.trim().length === 0) {
+      UiService.showToast("Email do representante não encontrado.", "danger");
+      return;
+    }
+
+    /* Simula envio da notificação */
+    const notification = {
+      id: `notif-${Date.now()}`,
+      companyId,
+      email,
+      description,
+      fileName: appState.selectedNotificationFile ? appState.selectedNotificationFile.name : null,
+      sentAt: new Date().toLocaleString("pt-BR"),
+      sentBy: AuthService.getSession().name
+    };
+
+    /* Aqui você poderia armazenar em localStorage se desejasse persistir histórico */
+    /* DataService.saveNotification(notification); */
+
+    /* Exibe modal de sucesso */
+    showNotificationSuccessModal(notification);
+
+    /* Limpa o formulário */
+    $("#notificationForm")[0].reset();
+    appState.selectedNotificationFile = null;
+    $("#filePreview").empty();
+    $("#notificationCompanyId").val("").trigger("change");
+    $("#notificationCompanyEmail").val("");
+  };
+
+  /* Exibe modal de sucesso após envio de notificação. */
+  const showNotificationSuccessModal = (notification) => {
+    const company = DataService.getCompanyById(notification.companyId);
+    const companyName = company ? company.name : "Empresa";
+
+    const successHtml = `
+      <div class="text-center py-4">
+        <div class="notification-success-icon">
+          <i class="bi bi-check-circle-fill"></i>
+        </div>
+        <h5 class="mb-3">Notificação enviada com sucesso!</h5>
+        <div class="text-muted small mb-4">
+          <p class="mb-2"><strong>Empresa:</strong> ${UiService.escapeHtml(companyName)}</p>
+          <p class="mb-2"><strong>Email:</strong> ${UiService.escapeHtml(notification.email)}</p>
+          ${notification.fileName ? `<p class="mb-2"><strong>Arquivo:</strong> ${UiService.escapeHtml(notification.fileName)}</p>` : ""}
+          <p class="mb-0"><strong>Enviado em:</strong> ${UiService.escapeHtml(notification.sentAt)}</p>
+        </div>
+        <p class="text-muted mb-0">A notificação foi registrada e o documento foi anexado.</p>
+      </div>
+    `;
+
+    /* Usa a abordagem de toast que já existe no projeto */
+    UiService.showToast("✓ Notificação enviada com sucesso para " + companyName, "success");
+    
+    /* Exibe também um alerta visual no topo do formulário */
+    const alertHtml = `
+      <div class="alert alert-success notification-alert alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i>
+        <strong>Sucesso!</strong> Notificação enviada para ${UiService.escapeHtml(companyName)}.
+        ${notification.fileName ? `<br/><small class="text-muted">Arquivo anexado: ${UiService.escapeHtml(notification.fileName)}</small>` : ""}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
+      </div>
+    `;
+
+    $("#notificationForm").before(alertHtml);
+
+    /* Remove o alerta após 5 segundos */
+    setTimeout(() => {
+      $(".notification-alert").fadeOut(() => {
+        $(".notification-alert").remove();
+      });
+    }, 5000);
   };
 
   /* Renderiza a área de relatórios com base na empresa e período selecionados. */
