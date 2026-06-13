@@ -414,14 +414,81 @@
             <div>
               <h1 class="page-title mb-1">Avaliações</h1>
               <p class="page-subtitle mb-0">
-                Formulário operacional para a equipe da incubadora coletar evidências e atribuir notas.
+                Consulte monitoramentos anteriores ou realize uma nova avaliação.
               </p>
             </div>
-            <div class="d-flex gap-2">
-              <select class="form-select" id="evaluationCompanySelector"></select>
-              <button class="btn btn-outline-primary" id="btnLoadCompanyEvaluation">
-                Carregar empresa
+            <div class="btn-group" role="group" aria-label="Modo da página de avaliações">
+              <button class="btn btn-primary evaluation-mode-btn active" data-evaluation-mode="history">
+                <i class="bi bi-clock-history"></i>
+                Avaliações anteriores
               </button>
+              <button class="btn btn-outline-primary evaluation-mode-btn" data-evaluation-mode="new">
+                <i class="bi bi-clipboard-plus"></i>
+                Realizar avaliação
+              </button>
+            </div>
+          </div>
+
+          <!-- MODO: HISTÓRICO DE AVALIAÇÕES -->
+          <div id="evaluationHistoryPane">
+            <div class="app-card mb-4">
+              <div class="card-header-lite mb-4">
+                <h2 class="section-title mb-1">Localizar avaliações</h2>
+                <p class="section-subtitle mb-0">
+                  Filtre os registros por empresa, ano e semestre.
+                </p>
+              </div>
+              <div class="row g-3">
+                <div class="col-12 col-lg-5">
+                  <label class="form-label">Empresa</label>
+                  <select class="form-select" id="evaluationHistoryCompanyFilter"></select>
+                </div>
+                <div class="col-12 col-md-6 col-lg-3">
+                  <label class="form-label">Ano</label>
+                  <select class="form-select" id="evaluationHistoryYearFilter"></select>
+                </div>
+                <div class="col-12 col-md-6 col-lg-4">
+                  <label class="form-label">Semestre</label>
+                  <select class="form-select" id="evaluationHistorySemesterFilter">
+                    <option value="all">Todos os semestres</option>
+                    <option value="1">1º semestre</option>
+                    <option value="2">2º semestre</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-4">
+              <div class="col-12 col-xl-5">
+                <div class="app-card h-100">
+                  <div class="card-header-lite mb-3">
+                    <h2 class="section-title mb-1">Avaliações encontradas</h2>
+                    <p class="section-subtitle mb-0" id="evaluationHistoryCount"></p>
+                  </div>
+                  <div id="evaluationHistoryList"></div>
+                </div>
+              </div>
+              <div class="col-12 col-xl-7">
+                <div class="app-card h-100">
+                  <div id="evaluationHistoryDetail"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODO: NOVA AVALIAÇÃO -->
+          <div class="d-none" id="newEvaluationPane">
+          <div class="app-card mb-4">
+            <div class="row g-3 align-items-end">
+              <div class="col-12 col-lg-7">
+                <label class="form-label">Empresa que será avaliada</label>
+                <select class="form-select" id="evaluationCompanySelector"></select>
+              </div>
+              <div class="col-12 col-lg-5">
+                <p class="text-muted small mb-2">
+                  A seleção atualiza o formulário automaticamente.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -517,6 +584,7 @@
                 </div>
               </div>
             </div>
+          </div>
           </div>
         </section>
 

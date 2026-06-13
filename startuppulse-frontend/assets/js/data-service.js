@@ -182,6 +182,27 @@ window.DataService = (() => {
       .sort((a, b) => new Date(a.date) - new Date(b.date));
   };
 
+  /* Retorna avaliações filtradas por empresa, ano e semestre. */
+  const getEvaluationsByPeriod = (
+    companyId,
+    year = "all",
+    semester = "all"
+  ) => {
+    return getEvaluationsByCompany(companyId, year)
+      .filter((evaluation) => {
+        if (semester === "all") {
+          return true;
+        }
+
+        const month = Number(String(evaluation.date || "").slice(5, 7));
+        const evaluationSemester =
+          evaluation.semester || (month >= 1 && month <= 6 ? 1 : 2);
+
+        return Number(evaluationSemester) === Number(semester);
+      })
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
+  };
+
   /* Retorna uma avaliação específica pelo ID. */
   const getEvaluationById = (evaluationId) => {
     return deepClone((state.savedEvaluations || []).find((evaluation) => evaluation.id === evaluationId));
@@ -438,6 +459,7 @@ window.DataService = (() => {
     getFinancialRecordsByCompany,
     getSavedEvaluations,
     getEvaluationsByCompany,
+    getEvaluationsByPeriod,
     getEvaluationById,
     saveEvaluation,
     getReportSections,

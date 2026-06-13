@@ -448,6 +448,14 @@ button.nav-link {
   padding: 1rem;
   margin-bottom: 0.85rem;
   background: #fff;
+  color: inherit;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.saved-evaluation-item:hover,
+.saved-evaluation-item:focus-visible {
+  border-color: var(--sp-primary);
+  background: #f8fbfe;
 }
 
 /* Ajuste do offcanvas para leitura melhor. */

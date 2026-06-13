@@ -200,7 +200,7 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
     A estrutura já foi pensada para futura troca do cálculo simples por MCDA.
   */
   evaluationModel: {
-    version: "v3-monitoring-form",
+    version: "v4-evaluation-history",
     scale: [0, 1, 2, 3, 4, 5],
     scaleLabels: {
       0: "Não atende",
@@ -291,6 +291,18 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
         label: "Cidade",
         type: "text",
         placeholder: "Cidade principal de operação"
+      },
+      {
+        key: "cpf",
+        label: "CPF do responsável",
+        type: "text",
+        placeholder: "000.000.000-00"
+      },
+      {
+        key: "entryMethod",
+        label: "Forma de ingresso",
+        type: "text",
+        placeholder: "Ex.: Startup Campos, manifestação espontânea"
       },
       {
         key: "marketFocus",
@@ -903,6 +915,9 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
     }
   ]
 };
+
+window.STARTUP_PULSE_SAMPLE_DATA.legacyEvaluationAxes =
+  window.STARTUP_PULSE_SAMPLE_DATA.evaluationModel.axes;
 
 window.STARTUP_PULSE_SAMPLE_DATA.evaluationModel.axes = [
   {

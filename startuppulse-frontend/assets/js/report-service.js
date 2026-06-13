@@ -502,7 +502,12 @@ window.ReportService = (() => {
 
     y = addCerneMiniAxisTable(doc, evaluation, y);
 
-    const model = window.STARTUP_PULSE_SAMPLE_DATA?.evaluationModel;
+    const model = evaluation.modelSnapshot || {
+      axes:
+        (evaluation.modelVersion
+          ? window.STARTUP_PULSE_SAMPLE_DATA?.evaluationModel?.axes
+          : window.STARTUP_PULSE_SAMPLE_DATA?.legacyEvaluationAxes) || []
+    };
     const axisMap = {};
 
     (model?.axes || []).forEach((axis) => {
