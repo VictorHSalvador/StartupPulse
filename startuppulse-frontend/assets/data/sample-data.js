@@ -200,15 +200,85 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
     A estrutura já foi pensada para futura troca do cálculo simples por MCDA.
   */
   evaluationModel: {
-    version: "v1-mvp",
-    scale: [1, 2, 3, 4, 5],
+    version: "v3-monitoring-form",
+    scale: [0, 1, 2, 3, 4, 5],
     scaleLabels: {
+      0: "Não atende",
       1: "Insuficiente",
       2: "Baixo",
       3: "Razoável",
       4: "Bom",
       5: "Excelente"
     },
+    infoFields: [
+      {
+        name: "startupName",
+        label: "Nome da startup",
+        type: "text",
+        readonly: true,
+        required: true
+      },
+      {
+        name: "municipality",
+        label: "Município de origem",
+        type: "text",
+        placeholder: "Informe o município"
+      },
+      {
+        name: "entryMethod",
+        label: "Forma de ingresso no Programa de Incubação",
+        type: "select",
+        options: ["Dr. Empreendedor", "Startup Campos", "Manifestação espontânea", "Outro"]
+      },
+      {
+        name: "entryMethodOther",
+        label: "Outra forma de ingresso",
+        type: "text",
+        placeholder: "Preencha quando selecionar Outro"
+      },
+      {
+        name: "evaluatorName",
+        label: "Avaliador",
+        type: "text",
+        required: true
+      },
+      {
+        name: "evaluatorEmail",
+        label: "E-mail do avaliador",
+        type: "email"
+      },
+      {
+        name: "representativeName",
+        label: "Responsável pela startup",
+        type: "text",
+        required: true
+      },
+      {
+        name: "representativeEmail",
+        label: "E-mail do responsável",
+        type: "email"
+      },
+      {
+        name: "representativeCpf",
+        label: "CPF do responsável",
+        type: "text",
+        placeholder: "000.000.000-00"
+      },
+      {
+        name: "monitoringNumber",
+        label: "Número do monitoramento",
+        type: "select",
+        required: true,
+        options: [
+          "1º monitoramento",
+          "2º monitoramento",
+          "3º monitoramento",
+          "4º monitoramento",
+          "5º monitoramento",
+          "6º monitoramento"
+        ]
+      }
+    ],
     customFieldSchema: [
       {
         key: "stage",
@@ -833,3 +903,407 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
     }
   ]
 };
+
+window.STARTUP_PULSE_SAMPLE_DATA.evaluationModel.axes = [
+  {
+    id: "axis-entrepreneur",
+    name: "Empreendedor",
+    description: "Equipe, capacitação, P&D, treinamento e planejamento do eixo empreendedor.",
+    indicators: [{ id: "ind-axis-entrepreneur", name: "Nota do Eixo Empreendedor" }],
+    questions: [
+      { id: "q-ent-1", text: "Qual o número total de pessoas na equipe?", answerType: "number", indicatorsLinked: [] },
+      {
+        id: "q-ent-2",
+        text: "Qual a titulação das pessoas da equipe?",
+        helper: "Ensino médio, técnico, graduados, mestres, doutores.",
+        answerType: "textarea",
+        indicatorsLinked: []
+      },
+      {
+        id: "q-ent-3",
+        text: "A equipe possui toda a mão de obra necessária para desenvolver o negócio?",
+        answerType: "toggle",
+        options: ["Integral", "Parcial", "Não"],
+        indicatorsLinked: []
+      },
+      {
+        id: "q-ent-4",
+        text: "A startup realizou investimentos em P&D ou treinamento da equipe?",
+        answerType: "toggle",
+        options: ["Sim", "Não"],
+        indicatorsLinked: []
+      },
+      { id: "q-ent-5", text: "Quais foram os treinamentos realizados?", answerType: "textarea", indicatorsLinked: [] },
+      {
+        id: "q-ent-6",
+        text: "Houve recurso investido em P&D ou treinamento da equipe?",
+        helper: "Escreva o valor sem o R$. Caso a resposta anterior seja negativa, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      {
+        id: "q-ent-7",
+        text: "Possui planejamento para o desenvolvimento do Eixo Empreendedor?",
+        answerType: "toggle",
+        options: ["Integral", "Parcial", "Não possui planejamento para desenvolver o Eixo Empreendedor"],
+        indicatorsLinked: []
+      },
+      {
+        id: "q-ent-score",
+        text: "Avaliação do Eixo Empreendedor",
+        helper: "Atribua a nota do eixo e registre a justificativa da avaliação.",
+        answerType: "none",
+        indicatorsLinked: ["ind-axis-entrepreneur"]
+      }
+    ]
+  },
+  {
+    id: "axis-management",
+    name: "Gestão",
+    description: "Formalização, processos, exigências legais, notas fiscais, parcerias e investimentos.",
+    indicators: [{ id: "ind-axis-management", name: "Nota do Eixo Gestão" }],
+    questions: [
+      { id: "q-ges-1", text: "Possui CNPJ e Razão Social?", answerType: "toggle", options: ["Sim", "Não"], indicatorsLinked: [] },
+      {
+        id: "q-ges-2",
+        text: "CNPJ e Razão Social",
+        helper: "Caso a resposta anterior seja positiva, informe os dados.",
+        answerType: "textarea",
+        indicatorsLinked: []
+      },
+      {
+        id: "q-ges-3",
+        text: "Os processos estão mapeados e controlados?",
+        answerType: "toggle",
+        options: ["Integral", "Parcial", "Não estão sendo mapeados e controlados"],
+        indicatorsLinked: []
+      },
+      { id: "q-ges-4", text: "Possui exigências legais não sanadas?", answerType: "toggle", options: ["Sim", "Não"], indicatorsLinked: [] },
+      { id: "q-ges-5", text: "Possui notas fiscais emitidas?", answerType: "toggle", options: ["Sim", "Não"], indicatorsLinked: [] },
+      {
+        id: "q-ges-6",
+        text: "Quantidade de notas fiscais emitidas",
+        helper: "Caso a resposta anterior seja negativa, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      {
+        id: "q-ges-7",
+        text: "Possui parceria com instituições de pesquisa e fomento?",
+        answerType: "toggle",
+        options: ["Sim", "Não"],
+        indicatorsLinked: []
+      },
+      {
+        id: "q-ges-8",
+        text: "Quais as parcerias com instituições de pesquisa e fomento realizadas?",
+        answerType: "textarea",
+        indicatorsLinked: []
+      },
+      {
+        id: "q-ges-9",
+        text: "Possui montante captado com instituições de fomento?",
+        answerType: "toggle",
+        options: ["Sim", "Não"],
+        indicatorsLinked: []
+      },
+      {
+        id: "q-ges-10",
+        text: "Montante captado com instituições de fomento (R$)",
+        helper: "Escreva o valor sem o R$. Caso a resposta anterior seja negativa, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      { id: "q-ges-11", text: "Possui montante de investimento próprio?", answerType: "toggle", options: ["Sim", "Não"], indicatorsLinked: [] },
+      {
+        id: "q-ges-12",
+        text: "Montante de investimento próprio (R$)",
+        helper: "Escreva o valor sem o R$. Caso a resposta anterior seja negativa, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      {
+        id: "q-ges-13",
+        text: "Possui montante de outras fontes (investidor anjo, capital de risco, bancos etc)?",
+        answerType: "toggle",
+        options: ["Sim", "Não"],
+        indicatorsLinked: []
+      },
+      {
+        id: "q-ges-14",
+        text: "Montante de outras fontes (investidor anjo, capital de risco, bancos etc) (R$)",
+        helper: "Escreva o valor sem o R$. Caso a resposta anterior seja negativa, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      {
+        id: "q-ges-15",
+        text: "Possui planejamento para o desenvolvimento do Eixo Gestão?",
+        answerType: "toggle",
+        options: ["Integral", "Parcial", "Não possui planejamento para desenvolver o Eixo Gestão"],
+        indicatorsLinked: []
+      },
+      {
+        id: "q-ges-score",
+        text: "Avaliação do Eixo Gestão",
+        helper: "Atribua a nota do eixo e registre a justificativa da avaliação.",
+        answerType: "none",
+        indicatorsLinked: ["ind-axis-management"]
+      }
+    ]
+  },
+  {
+    id: "axis-capital",
+    name: "Capital",
+    description: "Resultados financeiros, fluxo de caixa, sustentabilidade e planejamento de capital.",
+    indicators: [{ id: "ind-axis-capital", name: "Nota do Eixo Capital" }],
+    questions: [
+      { id: "q-cap-1", text: "Já possui lucro?", answerType: "toggle", options: ["Sim", "Não"], indicatorsLinked: [] },
+      {
+        id: "q-cap-2",
+        text: "Lucro (R$)",
+        helper: "Escreva o valor sem o R$. Caso a empresa ainda não tenha obtido lucro, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      { id: "q-cap-3", text: "Já possui faturamento?", answerType: "toggle", options: ["Sim", "Não"], indicatorsLinked: [] },
+      {
+        id: "q-cap-4",
+        text: "Faturamento (R$)",
+        helper: "Escreva o valor sem o R$. Caso a empresa ainda não tenha obtido faturamento, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      { id: "q-cap-5", text: "Já atingiu o break even point?", answerType: "toggle", options: ["Sim", "Não"], indicatorsLinked: [] },
+      {
+        id: "q-cap-6",
+        text: "Break even point (R$)",
+        helper: "Escreva o valor sem o R$. Caso a empresa ainda não tenha atingido, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      { id: "q-cap-7", text: "Já atingiu o payback?", answerType: "toggle", options: ["Sim", "Não"], indicatorsLinked: [] },
+      {
+        id: "q-cap-8",
+        text: "Payback (R$)",
+        helper: "Escreva o valor sem o R$. Caso a empresa ainda não tenha atingido, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      { id: "q-cap-9", text: "Já possui rentabilidade do negócio?", answerType: "toggle", options: ["Sim", "Não"], indicatorsLinked: [] },
+      {
+        id: "q-cap-10",
+        text: "Rentabilidade do negócio (R$)",
+        helper: "Escreva o valor sem o R$. Caso a empresa ainda não tenha atingido, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      { id: "q-cap-11", text: "Já possui lucratividade do negócio?", answerType: "toggle", options: ["Sim", "Não"], indicatorsLinked: [] },
+      {
+        id: "q-cap-12",
+        text: "Lucratividade do negócio (R$)",
+        helper: "Escreva o valor sem o R$. Caso a empresa ainda não tenha atingido, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      { id: "q-cap-13", text: "Possui fluxo de caixa?", answerType: "toggle", options: ["Sim", "Não"], indicatorsLinked: [] },
+      { id: "q-cap-14", text: "Disserte sobre a pergunta anterior", answerType: "textarea", indicatorsLinked: [] },
+      { id: "q-cap-15", text: "Possui sustentabilidade financeira?", answerType: "toggle", options: ["Sim", "Parcial", "Não"], indicatorsLinked: [] },
+      { id: "q-cap-16", text: "Disserte sobre a pergunta anterior", answerType: "textarea", indicatorsLinked: [] },
+      {
+        id: "q-cap-17",
+        text: "Informe o valor dos impostos pagos atualmente (Municipal, Estadual e Federal)",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      {
+        id: "q-cap-18",
+        text: "Possui planejamento para o desenvolvimento do Eixo Capital?",
+        answerType: "toggle",
+        options: ["Integral", "Parcial", "Não possui planejamento para desenvolver o Eixo Capital"],
+        indicatorsLinked: []
+      },
+      {
+        id: "q-cap-score",
+        text: "Avaliação do Eixo Capital",
+        helper: "Atribua a nota do eixo e registre a justificativa da avaliação.",
+        answerType: "none",
+        indicatorsLinked: ["ind-axis-capital"]
+      }
+    ]
+  },
+  {
+    id: "axis-technology",
+    name: "Tecnologia",
+    description: "Validação da tecnologia, propriedade intelectual, inovação e maturidade tecnológica.",
+    indicators: [{ id: "ind-axis-technology", name: "Nota do Eixo Tecnologia" }],
+    questions: [
+      { id: "q-tec-1", text: "Fez a validação da tecnologia?", answerType: "toggle", options: ["Sim", "Não"], indicatorsLinked: [] },
+      {
+        id: "q-tec-2",
+        text: "Se a resposta anterior foi positiva, nos fale como foi feita a validação",
+        answerType: "textarea",
+        indicatorsLinked: []
+      },
+      {
+        id: "q-tec-3",
+        text: "Possui algum ativo de Propriedade Intelectual solicitado e/ou concedido?",
+        answerType: "toggle",
+        options: ["Sim", "Não"],
+        indicatorsLinked: []
+      },
+      {
+        id: "q-tec-4",
+        text: "Se a resposta anterior foi positiva, nos fale quantos",
+        helper: "Caso a empresa ainda não possua, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      {
+        id: "q-tec-5",
+        text: "Quais seriam esses ativos de Propriedade Intelectual solicitados e/ou concedidos?",
+        answerType: "checkbox",
+        options: [
+          "Patente",
+          "Marca",
+          "Desenho Industrial",
+          "Indicação Geográfica",
+          "Programas de Computador",
+          "Topografias de Circuitos",
+          "Proteção Sui Generis",
+          "Direito Autoral",
+          "Segredo Industrial",
+          "Outros"
+        ],
+        indicatorsLinked: []
+      },
+      {
+        id: "q-tec-6",
+        text: "Quais ativos de Propriedade Intelectual foram concedidos?",
+        answerType: "textarea",
+        indicatorsLinked: []
+      },
+      { id: "q-tec-7", text: "Possui recursos investidos em inovação?", answerType: "toggle", options: ["Sim", "Não"], indicatorsLinked: [] },
+      {
+        id: "q-tec-8",
+        text: "Qual o valor investido em inovação?",
+        helper: "Caso a empresa ainda não possua, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      {
+        id: "q-tec-9",
+        text: "Em poucas palavras, defina a tecnologia e/ou inovação a ser inserida no mercado.",
+        answerType: "textarea",
+        indicatorsLinked: []
+      },
+      {
+        id: "q-tec-10",
+        text: "Qual o Nível de Maturidade Tecnológica da sua empresa?",
+        answerType: "select",
+        options: [
+          "TRL/MRL 1: Ideia da pesquisa iniciada e primeiros indícios de viabilidade traduzidos em P&D futuros.",
+          "TRL/MRL 2: Princípios básicos definidos e resultados com aplicações práticas apontando confirmação da ideia inicial.",
+          "TRL/MRL 3: Estudos analíticos e/ou laboratoriais verificam se a tecnologia é viável para desenvolvimento.",
+          "TRL/MRL 4: Prova de conceito aplicada em ambiente similar ao real, inclusive em escala de laboratório.",
+          "TRL/MRL 5: Validação em ambiente relevante de componentes ou arranjos experimentais.",
+          "TRL/MRL 6: Protótipo funcional ou modelo representacional demonstrado em ambiente operacional.",
+          "TRL/MRL 7: Protótipo demonstrado e validado em ambiente operacional.",
+          "TRL/MRL 8: Tecnologia testada e qualificada para ambiente real.",
+          "TRL/MRL 9: Tecnologia comprovada em ambiente operacional e produção estabelecida.",
+          "Não soube informar sobre a maturidade tecnológica"
+        ],
+        indicatorsLinked: []
+      },
+      {
+        id: "q-tec-11",
+        text: "Possui planejamento para o desenvolvimento do Eixo Tecnologia?",
+        answerType: "toggle",
+        options: ["Integral", "Parcial", "Não possui planejamento para o desenvolvimento do Eixo Tecnologia"],
+        indicatorsLinked: []
+      },
+      {
+        id: "q-tec-score",
+        text: "Avaliação do Eixo Tecnologia",
+        helper: "Atribua a nota do eixo e registre a justificativa da avaliação.",
+        answerType: "none",
+        indicatorsLinked: ["ind-axis-technology"]
+      }
+    ]
+  },
+  {
+    id: "axis-market",
+    name: "Mercado",
+    description: "Portfólio, canais, clientes, vendas, preço, planejamento e maturidade da empresa.",
+    indicators: [{ id: "ind-axis-market", name: "Nota do Eixo Mercado" }],
+    questions: [
+      {
+        id: "q-mar-1",
+        text: "Possui um portfólio de produtos e serviços oferecidos?",
+        answerType: "toggle",
+        options: ["Sim", "Não"],
+        indicatorsLinked: []
+      },
+      { id: "q-mar-2", text: "Disserte sobre a pergunta anterior", answerType: "textarea", indicatorsLinked: [] },
+      { id: "q-mar-3", text: "Quais canais de distribuição estão sendo usados nas vendas?", answerType: "textarea", indicatorsLinked: [] },
+      {
+        id: "q-mar-4",
+        text: "Possui lista dos principais clientes mapeados?",
+        answerType: "toggle",
+        options: ["Sim", "Não"],
+        indicatorsLinked: []
+      },
+      { id: "q-mar-5", text: "Disserte sobre a pergunta anterior", answerType: "textarea", indicatorsLinked: [] },
+      { id: "q-mar-6", text: "Possuem vendas já realizadas?", answerType: "toggle", options: ["Sim", "Não"], indicatorsLinked: [] },
+      {
+        id: "q-mar-7",
+        text: "Número de vendas já realizadas",
+        helper: "Caso a empresa ainda não possua, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      {
+        id: "q-mar-8",
+        text: "Qual o ticket médio?",
+        helper: "Escreva o valor sem o R$. Caso a empresa ainda não possua, coloque este valor como 0.",
+        answerType: "number",
+        indicatorsLinked: []
+      },
+      { id: "q-mar-9", text: "Mercado atendido (share)?", answerType: "textarea", indicatorsLinked: [] },
+      {
+        id: "q-mar-10",
+        text: "Como você classifica o preço praticado pela empresa em relação à concorrência?",
+        answerType: "toggle",
+        options: ["Acima da concorrência", "Abaixo da concorrência", "Similar ao preço da concorrência"],
+        indicatorsLinked: []
+      },
+      {
+        id: "q-mar-11",
+        text: "Possui planejamento para o desenvolvimento do Eixo Mercado?",
+        answerType: "toggle",
+        options: ["Integral", "Parcial", "Não possui planejamento para o desenvolvimento do Eixo Mercado"],
+        indicatorsLinked: []
+      },
+      {
+        id: "q-mar-score",
+        text: "Avaliação do Eixo Mercado",
+        helper: "Atribua a nota do eixo e registre a justificativa da avaliação.",
+        answerType: "none",
+        indicatorsLinked: ["ind-axis-market"]
+      },
+      {
+        id: "q-mar-12",
+        text: "Informe o nível de maturidade da empresa",
+        answerType: "select",
+        options: [
+          "Skate: Modelo de Negócios definido e/ou validado",
+          "Bicicleta: Produto e/ou Serviço pronto",
+          "Carro: Vendas realizadas com o Produto e/ou Serviço",
+          "Avião: Vendas realizadas com o Produto e/ou Serviço e processos de gestão definidos",
+          "Foguete: Com graduação ou sendo adequada para graduar"
+        ],
+        indicatorsLinked: []
+      }
+    ]
+  }
+];

@@ -32,6 +32,8 @@ window.DataService = (() => {
 
   const normalizeState = (incomingState = {}) => {
     const sampleState = getSampleState();
+    const hasCurrentEvaluationModel =
+      incomingState.evaluationModel?.version === sampleState.evaluationModel?.version;
 
     return {
       ...sampleState,
@@ -39,7 +41,9 @@ window.DataService = (() => {
       companies: hasUsableCompanies(incomingState.companies)
         ? incomingState.companies
         : sampleState.companies || [],
-      evaluationModel: incomingState.evaluationModel || sampleState.evaluationModel || null,
+      evaluationModel: hasCurrentEvaluationModel
+        ? incomingState.evaluationModel
+        : sampleState.evaluationModel || null,
       consultancies: Array.isArray(incomingState.consultancies)
         ? incomingState.consultancies
         : sampleState.consultancies || [],

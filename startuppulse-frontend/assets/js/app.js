@@ -418,17 +418,35 @@
     $(document).on("input change", ".question-answer-input", function () {
       const axisId = $(this).data("axis-id");
       const questionId = $(this).data("question-id");
-      const value = $(this).val();
+      let value = $(this).val();
 
       ensureAxisDraft(axisId);
+
+      if ($(this).attr("type") === "checkbox") {
+        value = $(
+          `.question-answer-input[type='checkbox'][data-axis-id='${axisId}'][data-question-id='${questionId}']:checked`
+        )
+          .map(function () {
+            return $(this).val();
+          })
+          .get();
+      }
+
       appState.draftEvaluation.axes[axisId].answers[questionId] = value;
+    });
+
+    /* Mantém os dados informativos no mesmo rascunho da avaliação. */
+    $(document).on("input change", ".evaluation-info-input", function () {
+      const fieldName = $(this).data("field-name");
+      appState.draftEvaluation.info[fieldName] = $(this).val();
     });
 
     /* Salva nota do indicador. */
     $(document).on("change", ".indicator-score-input", function () {
       const axisId = $(this).data("axis-id");
       const indicatorId = $(this).data("indicator-id");
-      const score = Number($(this).val());
+      const rawScore = $(this).val();
+      const score = rawScore === "" ? null : Number(rawScore);
 
       ensureAxisDraft(axisId);
       ensureIndicatorDraft(axisId, indicatorId);
@@ -1093,7 +1111,24 @@
 
   /* Reinicia o rascunho de avaliação ao trocar de empresa. */
   const resetDraftEvaluation = () => {
-    appState.draftEvaluation = { axes: {} };
+    const company = DataService.getCompanyById(appState.selectedEvaluationCompanyId);
+    const session = AuthService.getSession();
+
+    appState.draftEvaluation = {
+      info: {
+        startupName: company?.name || "",
+        municipality: company?.customFields?.city || "",
+        entryMethod: "",
+        entryMethodOther: "",
+        evaluatorName: session?.name || "",
+        evaluatorEmail: session?.email || "",
+        representativeName: company?.representative || "",
+        representativeEmail: company?.email || "",
+        representativeCpf: company?.cpf || "",
+        monitoringNumber: ""
+      },
+      axes: {}
+    };
     appState.activeAxisIndex = 0;
 
     (appState.evaluationModel.axes || []).forEach((axis) => {
@@ -1118,7 +1153,7 @@
   const ensureIndicatorDraft = (axisId, indicatorId) => {
     if (!appState.draftEvaluation.axes[axisId].indicatorRatings[indicatorId]) {
       appState.draftEvaluation.axes[axisId].indicatorRatings[indicatorId] = {
-        score: 0,
+        score: null,
         justification: ""
       };
     }
@@ -1153,6 +1188,7 @@
     $("#evaluationPendingBadge").text(`Pendências: ${totalPending}`);
     $("#axisPanelTitle").text(axis.name);
     $("#axisPanelSubtitle").text(axis.description);
+    $("#evaluationInfoContainer").html(renderEvaluationInfoFields());
 
     /* Render do stepper dos eixos. */
     $("#axisStepper").html(
@@ -1162,7 +1198,7 @@
           const classes = ["step-item"];
 
           if (index === appState.activeAxisIndex) classes.push("active");
-          if (axisResult && axisResult.pendingItems === 0 && axisResult.axisScore > 0) classes.push("completed");
+          if (axisResult && axisResult.pendingItems === 0 && axisResult.hasRatings) classes.push("completed");
 
           return `
             <button class="step-item ${classes.join(' ')}" data-axis-index="${index}">
@@ -1195,7 +1231,7 @@
                   <div class="fw-bold">${UiService.escapeHtml(item.axisName)}</div>
                   <div class="small text-muted">Pendências: ${item.pendingItems}</div>
                 </div>
-                <div class="score-pill">${item.axisScore ? item.axisScore.toFixed(1) : "--"}</div>
+                <div class="score-pill">${item.hasRatings ? item.axisScore.toFixed(1) : "--"}</div>
               </div>
             `
           )
@@ -1212,24 +1248,99 @@
     `);
   };
 
+  /* Renderiza os dados de identificação e contexto do monitoramento. */
+  const renderEvaluationInfoFields = () => {
+    const fields = appState.evaluationModel.infoFields || [];
+    const info = appState.draftEvaluation.info || {};
+
+    return fields
+      .map((field) => {
+        const value = info[field.name] ?? "";
+        const columnClass = field.columnClass || "col-12 col-md-6";
+        const requiredMark = field.required ? " *" : "";
+        let inputHtml = "";
+
+        if (field.type === "select") {
+          inputHtml = `
+            <select
+              class="form-select evaluation-info-input"
+              data-field-name="${UiService.escapeHtml(field.name)}"
+              ${field.required ? "required" : ""}
+            >
+              <option value="">Selecione...</option>
+              ${(field.options || [])
+                .map(
+                  (option) => `
+                    <option value="${UiService.escapeHtml(option)}" ${value === option ? "selected" : ""}>
+                      ${UiService.escapeHtml(option)}
+                    </option>
+                  `
+                )
+                .join("")}
+            </select>
+          `;
+        } else {
+          inputHtml = `
+            <input
+              type="${field.type || "text"}"
+              class="form-control evaluation-info-input"
+              data-field-name="${UiService.escapeHtml(field.name)}"
+              value="${UiService.escapeHtml(value)}"
+              placeholder="${UiService.escapeHtml(field.placeholder || "")}"
+              ${field.readonly ? "readonly" : ""}
+              ${field.required ? "required" : ""}
+            />
+          `;
+        }
+
+        return `
+          <div class="${columnClass}">
+            <label class="form-label">${UiService.escapeHtml(field.label)}${requiredMark}</label>
+            ${inputHtml}
+            ${field.helper ? `<div class="form-text">${UiService.escapeHtml(field.helper)}</div>` : ""}
+          </div>
+        `;
+      })
+      .join("");
+  };
+
   /* Renderiza um card de pergunta com campos de resposta e indicadores. */
   const renderQuestionCard = (axis, question, axisDraft) => {
-    const currentAnswer = axisDraft.answers?.[question.id] || "";
+    const currentAnswer = axisDraft.answers?.[question.id] ?? "";
+    const linkedIndicators = question.indicatorsLinked || [];
+    const hasAnswerField = question.answerType !== "none";
 
     return `
       <div class="question-card">
         <div class="question-title">${UiService.escapeHtml(question.text)}</div>
         <div class="question-helper">${UiService.escapeHtml(question.helper || '')}</div>
-        <div class="mb-3">
-          ${renderQuestionInput(axis.id, question, currentAnswer)}
-        </div>
-        <div class="indicator-title">Indicadores avaliados nesta pergunta</div>
-        <div class="row g-3">
-          ${question.indicatorsLinked
+        ${
+          hasAnswerField
+            ? `
+              <div class="mb-3">
+                <label class="form-label small text-muted">Resposta do avaliado</label>
+                ${renderQuestionInput(axis.id, question, currentAnswer)}
+              </div>
+            `
+            : ""
+        }
+        ${
+          linkedIndicators.length
+            ? `
+              <div class="indicator-title">
+                ${linkedIndicators.length === 1 ? "Avaliação do indicador" : "Avaliação dos indicadores"}
+              </div>
+              <div class="row g-3">
+                ${linkedIndicators
             .map((indicatorId) => {
               const indicator = axis.indicators.find((item) => item.id === indicatorId);
+
+              if (!indicator) {
+                return "";
+              }
+
               const currentIndicator = axisDraft.indicatorRatings?.[indicatorId] || {
-                score: 0,
+                score: null,
                 justification: ""
               };
 
@@ -1239,11 +1350,18 @@
                     <div class="fw-bold mb-2">${UiService.escapeHtml(indicator.name)}</div>
                     <label class="form-label small text-muted">Nota do indicador</label>
                     <select class="form-select indicator-score-input mb-3" data-axis-id="${axis.id}" data-indicator-id="${indicatorId}">
-                      <option value="0">Selecione...</option>
+                      <option value="">Selecione...</option>
                       ${appState.evaluationModel.scale
                         .map(
                           (score) => `
-                            <option value="${score}" ${Number(currentIndicator.score) === score ? 'selected' : ''}>
+                            <option value="${score}" ${
+                              currentIndicator.score !== null &&
+                              currentIndicator.score !== undefined &&
+                              currentIndicator.score !== "" &&
+                              Number(currentIndicator.score) === score
+                                ? "selected"
+                                : ""
+                            }>
                               ${score} - ${UiService.escapeHtml(appState.evaluationModel.scaleLabels[score])}
                             </option>
                           `
@@ -1263,7 +1381,10 @@
               `;
             })
             .join("")}
-        </div>
+              </div>
+            `
+            : ""
+        }
       </div>
     `;
   };
@@ -1295,20 +1416,51 @@
       `;
     }
 
-    if (question.answerType === "radio") {
+    if (
+      question.answerType === "toggle" ||
+      question.answerType === "toggle_button" ||
+      question.answerType === "radio"
+    ) {
+      return `
+        <div class="d-flex flex-wrap gap-2">
+          ${question.options
+            .map(
+              (option, index) => `
+              <input
+                class="btn-check question-answer-input"
+                type="radio"
+                name="${axisId}-${question.id}"
+                id="${question.id}-${index}"
+                value="${UiService.escapeHtml(option)}"
+                data-axis-id="${axisId}"
+                data-question-id="${question.id}"
+                ${currentAnswer === option ? 'checked' : ''}
+              />
+              <label class="btn btn-outline-primary" for="${question.id}-${index}">
+                ${UiService.escapeHtml(option)}
+              </label>
+            `
+            )
+            .join("")}
+        </div>
+      `;
+    }
+
+    if (question.answerType === "checkbox") {
+      const selectedOptions = Array.isArray(currentAnswer) ? currentAnswer : [];
+
       return question.options
         .map(
           (option, index) => `
             <div class="form-check mb-2">
               <input
                 class="form-check-input question-answer-input"
-                type="radio"
-                name="${question.id}"
+                type="checkbox"
                 id="${question.id}-${index}"
                 value="${UiService.escapeHtml(option)}"
                 data-axis-id="${axisId}"
                 data-question-id="${question.id}"
-                ${currentAnswer === option ? 'checked' : ''}
+                ${selectedOptions.includes(option) ? "checked" : ""}
               />
               <label class="form-check-label" for="${question.id}-${index}">
                 ${UiService.escapeHtml(option)}
@@ -1317,6 +1469,31 @@
           `
         )
         .join("");
+    }
+
+    if (question.answerType === "select") {
+      return `
+        <select
+          class="form-select question-answer-input"
+          data-axis-id="${axisId}"
+          data-question-id="${question.id}"
+        >
+          <option value="">Selecione...</option>
+          ${(question.options || [])
+            .map(
+              (option) => `
+                <option value="${UiService.escapeHtml(option)}" ${currentAnswer === option ? "selected" : ""}>
+                  ${UiService.escapeHtml(option)}
+                </option>
+              `
+            )
+            .join("")}
+        </select>
+      `;
+    }
+
+    if (question.answerType === "none") {
+      return "";
     }
 
     return `
@@ -1336,14 +1513,18 @@
       <div class="summary-list">
         ${axis.indicators
           .map((indicator) => {
-            const item = axisDraft.indicatorRatings?.[indicator.id] || { score: 0 };
+            const item = axisDraft.indicatorRatings?.[indicator.id] || { score: null };
             return `
               <div class="summary-item">
                 <div>
                   <div class="fw-bold">${UiService.escapeHtml(indicator.name)}</div>
                   <div class="small text-muted">Justificativa: ${item.justification ? 'preenchida' : 'pendente'}</div>
                 </div>
-                <div class="score-pill">${item.score ? item.score : '--'}</div>
+                <div class="score-pill">${
+                  item.score !== null && item.score !== undefined && item.score !== ""
+                    ? item.score
+                    : "--"
+                }</div>
               </div>
             `;
           })
@@ -1370,12 +1551,34 @@
       appState.draftEvaluation,
       appState.evaluationModel
     );
+    const info = appState.draftEvaluation.info || {};
+    const missingRequiredField = (appState.evaluationModel.infoFields || []).find(
+      (field) => field.required && !String(info[field.name] ?? "").trim()
+    );
+
+    if (missingRequiredField) {
+      UiService.showToast(`Preencha o campo "${missingRequiredField.label}".`, "warning");
+      return;
+    }
+
+    const totalPending = summary.axisResults.reduce(
+      (total, axisResult) => total + axisResult.pendingItems,
+      0
+    );
+
+    if (totalPending > 0) {
+      UiService.showToast("Avalie todos os indicadores antes de salvar.", "warning");
+      return;
+    }
 
     const payload = {
       companyId: company.id,
       companyName: company.name,
-      evaluator: "Funcionário da incubadora",
+      evaluator: info.evaluatorName,
+      evaluatorEmail: info.evaluatorEmail || "",
       date: new Date().toISOString().slice(0, 10),
+      monitoringNumber: info.monitoringNumber,
+      info: JSON.parse(JSON.stringify(info)),
       axisScores: Object.fromEntries(
         summary.axisResults.map((item) => [item.axisName, item.axisScore])
       ),

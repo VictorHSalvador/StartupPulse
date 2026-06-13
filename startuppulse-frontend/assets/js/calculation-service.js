@@ -42,7 +42,16 @@ window.CalculationService = (() => {
     Nesta fase, cada indicador pesa igualmente.
   */
   const calculateAxisScore = (indicatorScores) => {
-    return average(Object.values(indicatorScores || {}));
+    const validScores = Object.values(indicatorScores || {})
+      .filter((score) => score !== null && score !== undefined && score !== "")
+      .map((score) => normalizeScore(score));
+
+    if (!validScores.length) {
+      return 0;
+    }
+
+    const total = validScores.reduce((sum, current) => sum + current, 0);
+    return Number((total / validScores.length).toFixed(2));
   };
 
   /*
@@ -59,7 +68,13 @@ window.CalculationService = (() => {
     axisConfig.indicators.forEach((indicator) => {
       const indicatorEntry = axisData?.indicatorRatings?.[indicator.id];
 
-      if (!indicatorEntry || !Number(indicatorEntry.score)) {
+      if (
+        !indicatorEntry ||
+        indicatorEntry.score === null ||
+        indicatorEntry.score === undefined ||
+        indicatorEntry.score === "" ||
+        !String(indicatorEntry.justification || "").trim()
+      ) {
         pending += 1;
       }
     });
@@ -77,22 +92,40 @@ window.CalculationService = (() => {
       const indicatorScores = {};
 
       axis.indicators.forEach((indicator) => {
-        indicatorScores[indicator.id] = Number(axisDraft.indicatorRatings?.[indicator.id]?.score || 0);
+        const rawScore = axisDraft.indicatorRatings?.[indicator.id]?.score;
+        indicatorScores[indicator.id] =
+          rawScore === null || rawScore === undefined || rawScore === ""
+            ? null
+            : Number(rawScore);
       });
 
       const axisScore = calculateAxisScore(indicatorScores);
       const pendingItems = countAxisPendingItems(axisDraft, axis);
+      const hasRatings = Object.values(indicatorScores).some(
+        (score) => score !== null && score !== undefined && score !== ""
+      );
 
       return {
         axisId: axis.id,
         axisName: axis.name,
         axisScore,
         pendingItems,
+        hasRatings,
         indicatorScores
       };
     });
 
-    const overallScore = average(axisResults.map((axis) => axis.axisScore));
+    const ratedAxisScores = axisResults
+      .filter((axis) => axis.hasRatings)
+      .map((axis) => axis.axisScore);
+    const overallScore = ratedAxisScores.length
+      ? Number(
+          (
+            ratedAxisScores.reduce((sum, score) => sum + score, 0) /
+            ratedAxisScores.length
+          ).toFixed(2)
+        )
+      : 0;
     const classification = classifyOverallScore(overallScore, axisResults);
 
     return {
@@ -107,8 +140,11 @@ window.CalculationService = (() => {
     Ela não pretende substituir o futuro modelo multicritério.
   */
   const classifyOverallScore = (overallScore, axisResults) => {
-    const hasCriticalAxis = axisResults.some((axis) => axis.axisScore > 0 && axis.axisScore < 2.5);
-    const manyWeakAxes = axisResults.filter((axis) => axis.axisScore > 0 && axis.axisScore < 3).length >= 2;
+    const hasCriticalAxis = axisResults.some(
+      (axis) => axis.hasRatings && axis.axisScore < 2.5
+    );
+    const manyWeakAxes =
+      axisResults.filter((axis) => axis.hasRatings && axis.axisScore < 3).length >= 2;
 
     if (hasCriticalAxis || manyWeakAxes || overallScore < 2.5) {
       return "Inapta";

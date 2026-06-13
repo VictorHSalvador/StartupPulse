@@ -478,9 +478,22 @@ window.ReportService = (() => {
     y = addKeyValueTable(
       doc,
       [
+        ["Monitoramento", safeText(evaluation.monitoringNumber || evaluation.info?.monitoringNumber)],
         ["Data da avaliação", safeText(evaluation.date)],
         ["Avaliador", safeText(evaluation.evaluator)],
         ["E-mail do avaliador", safeText(evaluation.evaluatorEmail)],
+        ["Responsável pela startup", safeText(evaluation.info?.representativeName)],
+        ["E-mail do responsável", safeText(evaluation.info?.representativeEmail)],
+        ["CPF do responsável", safeText(evaluation.info?.representativeCpf)],
+        ["Município de origem", safeText(evaluation.info?.municipality)],
+        [
+          "Forma de ingresso",
+          safeText(
+            evaluation.info?.entryMethod === "Outro"
+              ? evaluation.info?.entryMethodOther
+              : evaluation.info?.entryMethod
+          )
+        ],
         ["Score geral", Number(evaluation.overallScore || 0).toFixed(2)],
         ["Classificação", safeText(evaluation.classification)]
       ],
