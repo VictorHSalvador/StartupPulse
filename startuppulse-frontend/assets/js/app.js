@@ -10,12 +10,14 @@
     currentCompanies: [],
     currentConsultancies: [],
     currentSavedEvaluations: [],
-    currentFinancialRecords: [],
+    currentNotifications: [],
     currentReportTemplates: {},
     currentReportSections: {},
     evaluationModel: null,
+    evaluationFormModel: null,
     activeAxisIndex: 0,
     evaluationMode: "history",
+    editingEvaluationId: null,
     selectedEvaluationCompanyId: null,
     selectedHistoryCompanyId: null,
     selectedHistoryYear: "all",
@@ -34,6 +36,8 @@
   /* Instâncias do Bootstrap usadas na interface. */
   let companyModalInstance;
   let companyDetailCanvasInstance;
+
+  const isManager = () => AuthService.getSession()?.role === "Gestor";
 
   /* Controle visual da autenticação. */
   const authScreen = () => $("#authScreen");
@@ -56,7 +60,9 @@
     appShell().removeClass("d-none");
 
     /* Mostra o nome do usuário logado na topbar. */
-    $("#loggedUserName").text(session.name);
+    $("#loggedUserName").text(
+      `${session.name}${session.role ? ` · ${session.role}` : ""}`
+    );
   };
 
   /*
@@ -160,7 +166,7 @@
     appState.currentCompanies = DataService.getCompanies();
     appState.currentConsultancies = DataService.getConsultancies();
     appState.currentSavedEvaluations = DataService.getSavedEvaluations();
-    appState.currentFinancialRecords = DataService.getFinancialRecords();
+    appState.currentNotifications = DataService.getNotifications();
     appState.currentReportTemplates = DataService.getReportTemplates();
     appState.currentReportSections = DataService.getReportSections();
     appState.evaluationModel = DataService.getEvaluationModel();
@@ -322,6 +328,10 @@
           evaluationId: appState.selectedReportEvaluationId || null
         });
 
+        if (!context.evaluations.length) {
+          throw new Error("Não há avaliações no período selecionado para o relatório de desempenho.");
+        }
+
         ReportService.generatePerformanceReport(context);
         UiService.showToast("Relatório de desempenho gerado com sucesso.", "success");
       } catch (error) {
@@ -336,6 +346,10 @@
           year: appState.selectedReportYear || "all",
           evaluationId: appState.selectedReportEvaluationId || null
         });
+
+        if (!context.latestEvaluation) {
+          throw new Error("Não há avaliação no período selecionado para compor o relatório financeiro.");
+        }
 
         ReportService.generateFinancialReport(context);
         UiService.showToast("Relatório financeiro gerado com sucesso.", "success");
@@ -378,6 +392,11 @@
     });
 
     $(document).on("click", "[data-action='edit-company']", function () {
+      if (!isManager()) {
+        UiService.showToast("Apenas gestores podem editar empresas.", "warning");
+        return;
+      }
+
       const companyId = $(this).data("company-id");
       openCompanyModal(companyId);
     });
@@ -434,6 +453,10 @@
       renderEvaluationHistory();
     });
 
+    $(document).on("click", "[data-action='edit-evaluation']", function () {
+      startEditingEvaluation($(this).data("evaluation-id"));
+    });
+
     /* Navegação do stepper. */
     $(document).on("click", ".step-item", function () {
       appState.activeAxisIndex = Number($(this).data("axis-index"));
@@ -448,15 +471,22 @@
     });
 
     $("#btnNextAxis").on("click", () => {
-      if (appState.activeAxisIndex < appState.evaluationModel.axes.length - 1) {
+      const evaluationFormModel = getEvaluationFormModel();
+      const isLastAxis =
+        appState.activeAxisIndex === evaluationFormModel.axes.length - 1;
+
+      if (isLastAxis) {
+        handleSaveEvaluation();
+      } else {
         appState.activeAxisIndex += 1;
         renderEvaluations();
+        scrollToEvaluationFormStart();
       }
     });
 
     /* Limpa apenas o eixo atual, não a avaliação inteira. */
     $("#btnClearCurrentAxis").on("click", () => {
-      const currentAxis = appState.evaluationModel.axes[appState.activeAxisIndex];
+      const currentAxis = getEvaluationFormModel().axes[appState.activeAxisIndex];
       appState.draftEvaluation.axes[currentAxis.id] = {
         answers: {},
         indicatorRatings: {}
@@ -484,12 +514,18 @@
       }
 
       appState.draftEvaluation.axes[axisId].answers[questionId] = value;
+      $(this).closest(".question-card").removeClass("border-danger");
     });
 
     /* Mantém os dados informativos no mesmo rascunho da avaliação. */
     $(document).on("input change", ".evaluation-info-input", function () {
       const fieldName = $(this).data("field-name");
       appState.draftEvaluation.info[fieldName] = $(this).val();
+      $(this).removeClass("is-invalid");
+    });
+
+    $(document).on("change", "#evaluationFinalClassification", function () {
+      appState.draftEvaluation.finalClassification = $(this).val();
     });
 
     /* Salva nota do indicador. */
@@ -514,6 +550,7 @@
       ensureAxisDraft(axisId);
       ensureIndicatorDraft(axisId, indicatorId);
       appState.draftEvaluation.axes[axisId].indicatorRatings[indicatorId].justification = justification;
+      $(this).removeClass("is-invalid");
     });
 
     /* Salva avaliação final. */
@@ -521,6 +558,52 @@
 
     /* Salva consultoria. */
     $("#consultancyForm").on("submit", handleSaveConsultancy);
+    $("#btnClearConsultancy").on("click", clearConsultancyForm);
+
+    $(document).on("click", "[data-action='edit-consultancy']", function () {
+      const consultancy = appState.currentConsultancies.find(
+        (item) => item.id === $(this).data("consultancy-id")
+      );
+
+      if (!consultancy) {
+        return;
+      }
+
+      $("#consultancyId").val(consultancy.id);
+      $("#consultancyCompanyId").val(consultancy.companyId);
+      $("#consultancyDate").val(consultancy.date || "");
+      $("#consultancyTime").val(consultancy.time || "");
+      $("#consultancyStatus").val(consultancy.status || "Agendada");
+      $("#consultancyTopic").val(consultancy.topic || "");
+      $("#consultancyLocation").val(consultancy.location || "");
+      $("#consultancyConsultant").val(consultancy.consultant || "");
+      $("#consultancyNotes").val(consultancy.notes || "");
+      $("#consultancyActionPlan").val(consultancy.actionPlan || "");
+      $("#consultancyRating").val(consultancy.sessionRating ?? "");
+      $("#consultancySubmitLabel").text("Atualizar consultoria");
+      document.getElementById("consultancyForm")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    });
+
+    $(document).on("click", "[data-action='delete-consultancy']", function () {
+      if (!isManager()) {
+        UiService.showToast("Apenas gestores podem excluir consultorias.", "warning");
+        return;
+      }
+
+      const consultancyId = $(this).data("consultancy-id");
+
+      if (!window.confirm("Deseja excluir esta consultoria?")) {
+        return;
+      }
+
+      DataService.deleteConsultancy(consultancyId);
+      clearConsultancyForm();
+      refreshDataAndRender();
+      UiService.showToast("Consultoria excluída.", "warning");
+    });
 
     /* Notificações: seleção de empresa */
     $("#notificationCompanyId").on("change", function () {
@@ -685,7 +768,8 @@
         evaluations.map(
           (evaluation) => `
             <option value="${evaluation.id}">
-              ${UiService.escapeHtml(evaluation.date)} - ${UiService.escapeHtml(evaluation.evaluator)}
+              ${getEvaluationSemester(evaluation)}º semestre de ${getEvaluationYear(evaluation)}
+              - ${UiService.escapeHtml(evaluation.evaluator)}
             </option>
           `
         )
@@ -836,9 +920,18 @@
 
   /* Monta a lista de atenção para o gestor da incubadora. */
   const buildAttentionItems = (companies) => {
-    const criticalCompanies = companies.filter((company) => company.classification === "Inapta");
-    const nearGraduation = companies.filter((company) => company.classification === "Apta a Graduar");
-    const scheduled = appState.currentConsultancies.filter((item) => item.status === "Agendada");
+    const companyIds = new Set(companies.map((company) => company.id));
+    const criticalCompanies = companies.filter(
+      (company) => company.evaluationResult === "Inapta"
+    );
+    const nearGraduation = companies.filter(
+      (company) =>
+        company.evaluationResult === "Apta a Graduar" ||
+        company.classification === "Foguete"
+    );
+    const scheduled = appState.currentConsultancies.filter(
+      (item) => item.status === "Agendada" && companyIds.has(item.companyId)
+    );
 
     const blocks = [
       {
@@ -978,14 +1071,17 @@
     $("#companyCorporateName").val(company?.corporateName || "");
     $("#companyCnpj").val(company?.cnpj || "");
     $("#companyRepresentative").val(company?.representative || "");
+    $("#companyRepresentativeCpf").val(company?.representativeCpf || "");
     $("#companyEmail").val(company?.email || "");
     $("#companyPhone").val(company?.phone || "");
     $("#companySector").val(company?.sector || "");
-    $("#companyIncubationYear").val(company?.incubationYear || 1);
+    $("#companyIncubationYear").val(
+      company?.incubationYear || new Date().getFullYear()
+    );
     $("#companyStatus").val(company?.status || "Incubada");
     $("#companyEmployees").val(company?.employees || 0);
     $("#companyCapital").val(company?.capital || "");
-    $("#companyClassification").val(company?.classification || "Satisfatória");
+    $("#companyClassification").val(company?.classification || "Skate");
     $("#companyProducts").val(company?.products || "");
     $("#companyNotes").val(company?.notes || "");
 
@@ -1025,13 +1121,12 @@
       corporateName: $("#companyCorporateName").val(),
       cnpj: $("#companyCnpj").val(),
       representative: $("#companyRepresentative").val(),
+      representativeCpf: $("#companyRepresentativeCpf").val(),
       email: $("#companyEmail").val(),
       phone: $("#companyPhone").val(),
       sector: $("#companySector").val(),
       incubationYear: Number($("#companyIncubationYear").val()),
       status: $("#companyStatus").val(),
-      classification: $("#companyClassification").val(),
-      currentScore: 0,
       employees: Number($("#companyEmployees").val() || 0),
       capital: $("#companyCapital").val(),
       products: $("#companyProducts").val(),
@@ -1044,14 +1139,23 @@
       return;
     }
 
-    DataService.saveCompany(payload);
-    companyModalInstance.hide();
-    refreshDataAndRender();
-    UiService.showToast("Empresa salva com sucesso.", "success");
+    try {
+      DataService.saveCompany(payload);
+      companyModalInstance.hide();
+      refreshDataAndRender();
+      UiService.showToast("Empresa salva com sucesso.", "success");
+    } catch (error) {
+      UiService.showToast(error.message, "danger");
+    }
   };
 
   /* Exclui empresa após confirmação simples. */
   const handleDeleteCompany = (companyId) => {
+    if (!isManager()) {
+      UiService.showToast("Apenas gestores podem excluir empresas.", "warning");
+      return;
+    }
+
     const company = DataService.getCompanyById(companyId);
 
     if (!company) {
@@ -1099,6 +1203,10 @@
           <div class="col-12 col-md-6">
             <strong>Email</strong>
             <div class="text-muted">${UiService.escapeHtml(company.email)}</div>
+          </div>
+          <div class="col-12 col-md-6">
+            <strong>CPF do representante</strong>
+            <div class="text-muted">${UiService.escapeHtml(company.representativeCpf || "-")}</div>
           </div>
           <div class="col-12 col-md-6">
             <strong>Setor</strong>
@@ -1169,6 +1277,12 @@
   const resetDraftEvaluation = () => {
     const company = DataService.getCompanyById(appState.selectedEvaluationCompanyId);
     const session = AuthService.getSession();
+    const now = new Date();
+    const evaluationDate = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0")
+    ].join("-");
 
     appState.draftEvaluation = {
       info: {
@@ -1180,14 +1294,19 @@
         evaluatorEmail: session?.email || "",
         representativeName: company?.representative || "",
         representativeEmail: company?.email || "",
-        representativeCpf: company?.cpf || company?.customFields?.cpf || "",
-        monitoringNumber: ""
+        representativeCpf: company?.representativeCpf || company?.customFields?.cpf || "",
+        evaluationDate,
+        year: now.getFullYear(),
+        semester: now.getMonth() < 6 ? 1 : 2
       },
+      finalClassification: "",
       axes: {}
     };
+    appState.editingEvaluationId = null;
+    appState.evaluationFormModel = appState.evaluationModel;
     appState.activeAxisIndex = 0;
 
-    (appState.evaluationModel.axes || []).forEach((axis) => {
+    (appState.evaluationFormModel.axes || []).forEach((axis) => {
       appState.draftEvaluation.axes[axis.id] = {
         answers: {},
         indicatorRatings: {}
@@ -1213,6 +1332,91 @@
         justification: ""
       };
     }
+  };
+
+  const scrollToEvaluationFormStart = () => {
+    window.requestAnimationFrame(() => {
+      document.getElementById("axisPanelTitle")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    });
+  };
+
+  const getEvaluationFormModel = () =>
+    appState.evaluationFormModel || appState.evaluationModel;
+
+  const startEditingEvaluation = (evaluationId) => {
+    if (!isManager()) {
+      UiService.showToast("Apenas gestores podem editar avaliações concluídas.", "warning");
+      return;
+    }
+
+    const evaluation = DataService.getEvaluationById(evaluationId);
+
+    if (!evaluation) {
+      UiService.showToast("Avaliação não encontrada.", "danger");
+      return;
+    }
+
+    const company = DataService.getCompanyById(evaluation.companyId);
+    const session = AuthService.getSession();
+    const axes =
+      evaluation.modelSnapshot?.axes ||
+      (evaluation.modelVersion
+        ? appState.evaluationModel.axes
+        : window.STARTUP_PULSE_SAMPLE_DATA?.legacyEvaluationAxes) ||
+      appState.evaluationModel.axes;
+
+    appState.selectedEvaluationCompanyId = evaluation.companyId;
+    appState.editingEvaluationId = evaluation.id;
+    appState.evaluationFormModel = {
+      ...appState.evaluationModel,
+      axes: JSON.parse(JSON.stringify(axes))
+    };
+    appState.draftEvaluation = {
+      info: {
+        ...(evaluation.info || evaluation.details?.info || {}),
+        startupName: company?.name || evaluation.companyName || "",
+        municipality: company?.customFields?.city || "",
+        entryMethod: company?.customFields?.entryMethod || "",
+        entryMethodOther: company?.customFields?.entryMethodOther || "",
+        evaluatorName: session?.name || evaluation.evaluator || "",
+        evaluatorEmail: session?.email || evaluation.evaluatorEmail || "",
+        representativeName: company?.representative || "",
+        representativeEmail: company?.email || "",
+        representativeCpf: company?.representativeCpf || company?.customFields?.cpf || "",
+        evaluationDate: evaluation.date || "",
+        year: getEvaluationYear(evaluation),
+        semester: getEvaluationSemester(evaluation)
+      },
+      finalClassification: evaluation.classification || "",
+      axes: JSON.parse(JSON.stringify(evaluation.details?.axes || {}))
+    };
+
+    (appState.evaluationFormModel.axes || []).forEach((axis) => {
+      if (!appState.draftEvaluation.axes[axis.id]) {
+        appState.draftEvaluation.axes[axis.id] = {
+          answers: {},
+          indicatorRatings: {}
+        };
+      }
+    });
+
+    appState.activeAxisIndex = 0;
+    appState.evaluationMode = "new";
+    populateSharedSelectors();
+    renderEvaluations();
+    scrollToEvaluationFormStart();
+    UiService.showToast("Avaliação carregada para edição.", "primary");
+  };
+
+  const countAxisUnansweredQuestions = (axis, axisDraft) => {
+    return (axis?.questions || []).filter(
+      (question) =>
+        question.answerType !== "none" &&
+        isEvaluationAnswerMissing(axisDraft.answers?.[question.id])
+    ).length;
   };
 
   /* Renderiza a tela de avaliações. */
@@ -1241,14 +1445,28 @@
       return;
     }
 
-    const axis = appState.evaluationModel.axes[appState.activeAxisIndex];
+    const evaluationFormModel = getEvaluationFormModel();
+    const axis = evaluationFormModel.axes[appState.activeAxisIndex];
     const summary = CalculationService.calculateEvaluationSummary(
       appState.draftEvaluation,
-      appState.evaluationModel
+      evaluationFormModel
     );
     const axisDraft = appState.draftEvaluation.axes[axis.id] || { answers: {}, indicatorRatings: {} };
     const currentAxisResult = summary.axisResults.find((item) => item.axisId === axis.id);
-    const totalPending = summary.axisResults.reduce((sum, item) => sum + item.pendingItems, 0);
+    const totalPending = evaluationFormModel.axes.reduce((sum, currentAxis) => {
+      const currentDraft = appState.draftEvaluation.axes[currentAxis.id] || {
+        answers: {}
+      };
+      const axisResult = summary.axisResults.find(
+        (item) => item.axisId === currentAxis.id
+      );
+
+      return (
+        sum +
+        countAxisUnansweredQuestions(currentAxis, currentDraft) +
+        Number(axisResult?.pendingItems || 0)
+      );
+    }, 0);
 
     $("#evaluationCompanyTitle").text(company.name);
     $("#evaluationCompanyMeta").text(
@@ -1259,16 +1477,50 @@
     $("#axisPanelTitle").text(axis.name);
     $("#axisPanelSubtitle").text(axis.description);
     $("#evaluationInfoContainer").html(renderEvaluationInfoFields());
+    const isLastAxis =
+      appState.activeAxisIndex === evaluationFormModel.axes.length - 1;
+
+    $("#btnNextAxis")
+      .toggleClass("btn-success", isLastAxis)
+      .toggleClass("btn-primary", !isLastAxis)
+      .html(
+        isLastAxis
+          ? `<i class="bi bi-floppy"></i> ${
+              appState.editingEvaluationId
+                ? "Atualizar avaliação"
+                : "Salvar avaliação"
+            }`
+          : 'Próximo eixo <i class="bi bi-arrow-right"></i>'
+      );
+    $("#btnSaveEvaluation").html(
+      `<i class="bi bi-floppy"></i> ${
+        appState.editingEvaluationId ? "Atualizar avaliação" : "Salvar avaliação"
+      }`
+    );
 
     /* Render do stepper dos eixos. */
     $("#axisStepper").html(
-      appState.evaluationModel.axes
+      evaluationFormModel.axes
         .map((currentAxis, index) => {
           const axisResult = summary.axisResults.find((item) => item.axisId === currentAxis.id);
+          const currentDraft = appState.draftEvaluation.axes[currentAxis.id] || {
+            answers: {}
+          };
+          const unansweredQuestions = countAxisUnansweredQuestions(
+            currentAxis,
+            currentDraft
+          );
           const classes = ["step-item"];
 
           if (index === appState.activeAxisIndex) classes.push("active");
-          if (axisResult && axisResult.pendingItems === 0 && axisResult.hasRatings) classes.push("completed");
+          if (
+            axisResult &&
+            axisResult.pendingItems === 0 &&
+            unansweredQuestions === 0 &&
+            axisResult.hasRatings
+          ) {
+            classes.push("completed");
+          }
 
           return `
             <button class="step-item ${classes.join(' ')}" data-axis-index="${index}">
@@ -1295,15 +1547,26 @@
       <div class="summary-list">
         ${summary.axisResults
           .map(
-            (item) => `
+            (item) => {
+              const axisConfig = evaluationFormModel.axes.find(
+                (axisItem) => axisItem.id === item.axisId
+              );
+              const axisDraftForSummary =
+                appState.draftEvaluation.axes[item.axisId] || { answers: {} };
+              const pendingCount =
+                item.pendingItems +
+                countAxisUnansweredQuestions(axisConfig, axisDraftForSummary);
+
+              return `
               <div class="summary-item">
                 <div>
                   <div class="fw-bold">${UiService.escapeHtml(item.axisName)}</div>
-                  <div class="small text-muted">Pendências: ${item.pendingItems}</div>
+                  <div class="small text-muted">Pendências: ${pendingCount}</div>
                 </div>
                 <div class="score-pill">${item.hasRatings ? item.axisScore.toFixed(1) : "--"}</div>
               </div>
-            `
+            `;
+            }
           )
           .join("")}
       </div>
@@ -1312,8 +1575,34 @@
         <span class="fw-bold">Score geral</span>
         <span class="fs-4 fw-bold text-primary">${summary.overallScore.toFixed(2)}</span>
       </div>
-      <div>
+      <div class="mb-3">
+        <div class="small text-muted mb-1">Sugestão de resultado avaliativo</div>
         ${UiService.renderClassificationBadge(summary.classification)}
+      </div>
+      <div>
+        <label class="form-label fw-bold" for="evaluationFinalClassification">
+          Resultado avaliativo final
+        </label>
+        <select class="form-select" id="evaluationFinalClassification">
+          ${["Inapta", "Satisfatória", "Apta a Graduar"]
+            .map((classification) => {
+              const selectedClassification =
+                appState.draftEvaluation.finalClassification ||
+                summary.classification;
+
+              return `
+                <option value="${classification}" ${
+                  selectedClassification === classification ? "selected" : ""
+                }>
+                  ${classification}
+                </option>
+              `;
+            })
+            .join("")}
+        </select>
+        <div class="form-text">
+          O avaliador pode manter ou alterar a sugestão antes de salvar.
+        </div>
       </div>
     `);
   };
@@ -1554,6 +1843,32 @@
         <div class="text-end">
           <div class="fs-3 fw-bold text-primary">${Number(evaluation.overallScore || 0).toFixed(2)}</div>
           ${UiService.renderClassificationBadge(evaluation.classification)}
+          <div class="small text-muted mt-2">
+            Maturidade:
+            ${UiService.escapeHtml(evaluation.maturityClassification || "Skate")}
+          </div>
+          ${
+            evaluation.suggestedClassification &&
+            evaluation.suggestedClassification !== evaluation.classification
+              ? `
+                <div class="small text-muted mt-2">
+                  Sugestão da plataforma:
+                  ${UiService.escapeHtml(evaluation.suggestedClassification)}
+                </div>
+              `
+              : ""
+          }
+          <div class="mt-3">
+            <button
+              type="button"
+              class="btn btn-outline-primary btn-sm"
+              data-action="edit-evaluation"
+              data-evaluation-id="${evaluation.id}"
+            >
+              <i class="bi bi-pencil-square"></i>
+              Editar avaliação
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1567,8 +1882,8 @@
         </div>
         <div class="col-12 col-md-6">
           <div class="muted-card h-100">
-            <div class="small text-muted">Monitoramento</div>
-            <strong>${UiService.escapeHtml(evaluation.monitoringNumber || info.monitoringNumber || "-")}</strong>
+            <div class="small text-muted">Período do monitoramento</div>
+            <strong>${getEvaluationSemester(evaluation)}º semestre de ${getEvaluationYear(evaluation)}</strong>
           </div>
         </div>
       </div>
@@ -1614,14 +1929,26 @@
       ["Forma de ingresso", entryMethod],
       ["Responsável pela startup", company?.representative],
       ["E-mail do responsável", company?.email],
-      ["CPF do responsável", company?.cpf || company?.customFields?.cpf]
+      ["CPF do responsável", company?.representativeCpf || company?.customFields?.cpf]
     ];
-    const monitoringOptions =
-      (appState.evaluationModel.infoFields || [])
-        .find((field) => field.name === "monitoringNumber")
-        ?.options || [];
+    const missingCompanyFields = fixedFields
+      .filter(([, value]) => !String(value || "").trim())
+      .map(([label]) => label);
 
     return `
+      ${
+        appState.editingEvaluationId
+          ? `
+            <div class="col-12">
+              <div class="alert alert-primary mb-0">
+                <i class="bi bi-pencil-square me-2"></i>
+                Você está editando uma avaliação existente. O registro será atualizado ao salvar.
+              </div>
+            </div>
+          `
+          : ""
+      }
+
       <div class="col-12">
         <div class="alert alert-light border d-flex align-items-start gap-2 mb-0">
           <i class="bi bi-lock-fill text-secondary"></i>
@@ -1633,6 +1960,20 @@
           </div>
         </div>
       </div>
+
+      ${
+        missingCompanyFields.length
+          ? `
+            <div class="col-12">
+              <div class="alert alert-warning mb-0">
+                <strong>Cadastro incompleto:</strong>
+                ${UiService.escapeHtml(missingCompanyFields.join(", "))}.
+                A avaliação pode continuar, mas esses dados devem ser corrigidos na aba Empresas.
+              </div>
+            </div>
+          `
+          : ""
+      }
 
       ${fixedFields
         .map(
@@ -1648,6 +1989,18 @@
         .join("")}
 
       <div class="col-12"><hr class="my-2" /></div>
+
+      <div class="col-12 col-md-6">
+        <label class="form-label">Data da avaliação *</label>
+        <input
+          type="date"
+          class="form-control evaluation-info-input"
+          id="evaluationDate"
+          data-field-name="evaluationDate"
+          value="${UiService.escapeHtml(info.evaluationDate || "")}"
+          required
+        />
+      </div>
 
       <div class="col-12 col-md-6">
         <label class="form-label">Avaliador</label>
@@ -1673,24 +2026,30 @@
       </div>
 
       <div class="col-12 col-md-6">
-        <label class="form-label">Número do monitoramento *</label>
+        <label class="form-label">Ano do monitoramento *</label>
+        <input
+          type="number"
+          min="2000"
+          max="2100"
+          class="form-control evaluation-info-input"
+          id="evaluationYear"
+          data-field-name="year"
+          value="${UiService.escapeHtml(info.year ?? "")}"
+          required
+        />
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="form-label">Semestre do monitoramento *</label>
         <select
           class="form-select evaluation-info-input"
-          data-field-name="monitoringNumber"
+          id="evaluationSemester"
+          data-field-name="semester"
           required
         >
           <option value="">Selecione...</option>
-          ${monitoringOptions
-            .map(
-              (option) => `
-                <option value="${UiService.escapeHtml(option)}" ${
-                  info.monitoringNumber === option ? "selected" : ""
-                }>
-                  ${UiService.escapeHtml(option)}
-                </option>
-              `
-            )
-            .join("")}
+          <option value="1" ${Number(info.semester) === 1 ? "selected" : ""}>1º semestre</option>
+          <option value="2" ${Number(info.semester) === 2 ? "selected" : ""}>2º semestre</option>
         </select>
       </div>
     `;
@@ -1699,11 +2058,24 @@
   /* Renderiza um card de pergunta com campos de resposta e indicadores. */
   const renderQuestionCard = (axis, question, axisDraft) => {
     const currentAnswer = axisDraft.answers?.[question.id] ?? "";
-    const linkedIndicators = question.indicatorsLinked || [];
+    const linkedIndicators = (question.indicatorsLinked || []).filter(
+      (indicatorId) => {
+        const lastLinkedQuestion = [...(axis.questions || [])]
+          .reverse()
+          .find((item) => (item.indicatorsLinked || []).includes(indicatorId));
+
+        return lastLinkedQuestion?.id === question.id;
+      }
+    );
     const hasAnswerField = question.answerType !== "none";
 
     return `
-      <div class="question-card">
+      <div
+        class="question-card"
+        id="question-card-${axis.id}-${question.id}"
+        data-axis-id="${axis.id}"
+        data-question-id="${question.id}"
+      >
         <div class="question-title">${UiService.escapeHtml(question.text)}</div>
         <div class="question-helper">${UiService.escapeHtml(question.helper || '')}</div>
         ${
@@ -1738,7 +2110,10 @@
 
               return `
                 <div class="col-12 col-lg-6">
-                  <div class="indicator-box h-100">
+                  <div
+                    class="indicator-box h-100"
+                    id="indicator-box-${axis.id}-${indicatorId}"
+                  >
                     <div class="fw-bold mb-2">${UiService.escapeHtml(indicator.name)}</div>
                     <label class="form-label small text-muted">Nota do indicador</label>
                     <select class="form-select indicator-score-input mb-3" data-axis-id="${axis.id}" data-indicator-id="${indicatorId}">
@@ -1930,6 +2305,101 @@
     `;
   };
 
+  const isEvaluationAnswerMissing = (answer) => {
+    if (Array.isArray(answer)) {
+      return answer.length === 0;
+    }
+
+    return (
+      answer === null ||
+      answer === undefined ||
+      (typeof answer === "string" && !answer.trim())
+    );
+  };
+
+  const showEvaluationValidationError = ({
+    message,
+    axisIndex = null,
+    selector
+  }) => {
+    if (axisIndex !== null) {
+      appState.activeAxisIndex = axisIndex;
+      renderEvaluations();
+    }
+
+    UiService.showToast(message, "warning");
+
+    window.requestAnimationFrame(() => {
+      const element = document.querySelector(selector);
+
+      if (!element) {
+        return;
+      }
+
+      element.classList.add(
+        element.matches("input, select, textarea") ? "is-invalid" : "border-danger"
+      );
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      const focusTarget = element.matches("input, select, textarea")
+        ? element
+        : element.querySelector("input:not([type='hidden']), select, textarea");
+      focusTarget?.focus({ preventScroll: true });
+    });
+  };
+
+  const findFirstEvaluationContentIssue = () => {
+    const axes = getEvaluationFormModel().axes || [];
+
+    for (let axisIndex = 0; axisIndex < axes.length; axisIndex += 1) {
+      const axis = axes[axisIndex];
+      const axisDraft = appState.draftEvaluation.axes?.[axis.id] || {
+        answers: {},
+        indicatorRatings: {}
+      };
+
+      for (const question of axis.questions || []) {
+        if (
+          question.answerType !== "none" &&
+          isEvaluationAnswerMissing(axisDraft.answers?.[question.id])
+        ) {
+          return {
+            message: `Responda a pergunta "${question.text}".`,
+            axisIndex,
+            selector: `#question-card-${axis.id}-${question.id}`
+          };
+        }
+      }
+
+      for (const indicator of axis.indicators || []) {
+        const rating = axisDraft.indicatorRatings?.[indicator.id];
+
+        if (
+          !rating ||
+          rating.score === null ||
+          rating.score === undefined ||
+          rating.score === ""
+        ) {
+          return {
+            message: `Informe a nota do indicador "${indicator.name}".`,
+            axisIndex,
+            selector: `#indicator-box-${axis.id}-${indicator.id} .indicator-score-input`
+          };
+        }
+
+        if (!String(rating.justification || "").trim()) {
+          return {
+            message: `Justifique a nota do indicador "${indicator.name}".`,
+            axisIndex,
+            selector: `#indicator-box-${axis.id}-${indicator.id} .indicator-justification-input`
+          };
+        }
+      }
+    }
+
+    return null;
+  };
+
   /* Salva a avaliação preenchida atualmente. */
   const handleSaveEvaluation = () => {
     const company = DataService.getCompanyById(appState.selectedEvaluationCompanyId);
@@ -1941,66 +2411,117 @@
 
     const summary = CalculationService.calculateEvaluationSummary(
       appState.draftEvaluation,
-      appState.evaluationModel
+      getEvaluationFormModel()
     );
     const info = appState.draftEvaluation.info || {};
-    const missingRequiredField = (appState.evaluationModel.infoFields || []).find(
-      (field) => field.required && !String(info[field.name] ?? "").trim()
-    );
+    const evaluationDate = String(info.evaluationDate || "");
+    const parsedEvaluationDate = new Date(`${evaluationDate}T00:00:00`);
+    const year = Number(info.year);
+    const semester = Number(info.semester);
 
-    if (missingRequiredField) {
-      UiService.showToast(`Preencha o campo "${missingRequiredField.label}".`, "warning");
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(evaluationDate) ||
+      Number.isNaN(parsedEvaluationDate.getTime()) ||
+      [
+        parsedEvaluationDate.getFullYear(),
+        String(parsedEvaluationDate.getMonth() + 1).padStart(2, "0"),
+        String(parsedEvaluationDate.getDate()).padStart(2, "0")
+      ].join("-") !== evaluationDate
+    ) {
+      showEvaluationValidationError({
+        message: "Informe a data em que a avaliação foi realizada.",
+        selector: "#evaluationDate"
+      });
       return;
     }
 
-    const totalPending = summary.axisResults.reduce(
-      (total, axisResult) => total + axisResult.pendingItems,
-      0
-    );
-
-    if (totalPending > 0) {
-      UiService.showToast("Avalie todos os indicadores antes de salvar.", "warning");
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+      showEvaluationValidationError({
+        message: "Informe um ano de monitoramento válido.",
+        selector: "#evaluationYear"
+      });
       return;
     }
 
-    const evaluationDate = new Date();
-    const date = [
-      evaluationDate.getFullYear(),
-      String(evaluationDate.getMonth() + 1).padStart(2, "0"),
-      String(evaluationDate.getDate()).padStart(2, "0")
-    ].join("-");
+    if (![1, 2].includes(semester)) {
+      showEvaluationValidationError({
+        message: "Selecione o semestre do monitoramento.",
+        selector: "#evaluationSemester"
+      });
+      return;
+    }
+
+    if (
+      DataService.hasEvaluationForPeriod(
+        company.id,
+        year,
+        semester,
+        appState.editingEvaluationId
+      )
+    ) {
+      showEvaluationValidationError({
+        message: `Já existe uma avaliação desta empresa para o ${semester}º semestre de ${year}.`,
+        selector: "#evaluationYear"
+      });
+      return;
+    }
+
+    const contentIssue = findFirstEvaluationContentIssue();
+
+    if (contentIssue) {
+      showEvaluationValidationError(contentIssue);
+      return;
+    }
 
     const payload = {
       companyId: company.id,
       companyName: company.name,
+      companySnapshot: JSON.parse(JSON.stringify(company)),
       evaluator: info.evaluatorName,
       evaluatorEmail: info.evaluatorEmail || "",
-      date,
-      year: evaluationDate.getFullYear(),
-      semester: evaluationDate.getMonth() < 6 ? 1 : 2,
-      monitoringNumber: info.monitoringNumber,
+      date: evaluationDate,
+      year,
+      semester,
       info: JSON.parse(JSON.stringify(info)),
       modelVersion: appState.evaluationModel.version,
       modelSnapshot: {
-        axes: JSON.parse(JSON.stringify(appState.evaluationModel.axes || []))
+        axes: JSON.parse(JSON.stringify(getEvaluationFormModel().axes || []))
       },
       axisScores: Object.fromEntries(
         summary.axisResults.map((item) => [item.axisName, item.axisScore])
       ),
       overallScore: summary.overallScore,
-      classification: summary.classification,
+      suggestedClassification: summary.classification,
+      classification:
+        appState.draftEvaluation.finalClassification || summary.classification,
+      maturityClassification: String(
+        appState.draftEvaluation.axes?.["axis-market"]?.answers?.["q-mar-12"] ||
+          "Skate"
+      ).split(":")[0],
       details: JSON.parse(JSON.stringify(appState.draftEvaluation))
     };
 
-    const savedEvaluation = DataService.saveEvaluation(payload);
-    appState.selectedHistoryCompanyId = company.id;
-    appState.selectedHistoryYear = String(payload.year);
-    appState.selectedHistorySemester = String(payload.semester);
-    appState.selectedHistoryEvaluationId = savedEvaluation.id;
-    appState.evaluationMode = "history";
-    resetDraftEvaluation();
-    refreshDataAndRender();
-    UiService.showToast("Avaliação salva com sucesso.", "success");
+    try {
+      const wasEditing = Boolean(appState.editingEvaluationId);
+      const savedEvaluation = wasEditing
+        ? DataService.updateEvaluation(appState.editingEvaluationId, payload)
+        : DataService.saveEvaluation(payload);
+      appState.selectedHistoryCompanyId = company.id;
+      appState.selectedHistoryYear = String(payload.year);
+      appState.selectedHistorySemester = String(payload.semester);
+      appState.selectedHistoryEvaluationId = savedEvaluation.id;
+      appState.evaluationMode = "history";
+      resetDraftEvaluation();
+      refreshDataAndRender();
+      UiService.showToast(
+        wasEditing
+          ? "Avaliação atualizada com sucesso."
+          : "Avaliação salva com sucesso.",
+        "success"
+      );
+    } catch (error) {
+      UiService.showToast(error.message, "danger");
+    }
   };
 
   /* Renderiza consultorias. */
@@ -2036,7 +2557,24 @@
                       ? 'bg-info-subtle text-info-emphasis border border-info-subtle'
                       : 'bg-danger-subtle text-danger-emphasis border border-danger-subtle'
                   }">${UiService.escapeHtml(item.status)}</span>
+                  <button class="btn btn-sm btn-outline-secondary" data-action="edit-consultancy" data-consultancy-id="${item.id}" aria-label="Editar consultoria">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger" data-action="delete-consultancy" data-consultancy-id="${item.id}" aria-label="Excluir consultoria">
+                    <i class="bi bi-trash"></i>
+                  </button>
                 </div>
+              </div>
+              <div class="small text-muted mb-2">
+                ${item.time ? `Horário: ${UiService.escapeHtml(item.time)}` : ""}
+                ${item.location ? `${item.time ? " • " : ""}Local: ${UiService.escapeHtml(item.location)}` : ""}
+                ${
+                  item.sessionRating !== null &&
+                  item.sessionRating !== undefined &&
+                  item.sessionRating !== ""
+                    ? `${item.time || item.location ? " • " : ""}Nota: ${Number(item.sessionRating).toFixed(1)}`
+                    : ""
+                }
               </div>
               <div class="mb-2"><strong>Notas:</strong> <span class="text-muted">${UiService.escapeHtml(item.notes || '-')}</span></div>
               <div><strong>Plano de ação:</strong> <span class="text-muted">${UiService.escapeHtml(item.actionPlan || '-')}</span></div>
@@ -2054,11 +2592,17 @@
     const payload = {
       companyId: $("#consultancyCompanyId").val(),
       date: $("#consultancyDate").val(),
+      time: $("#consultancyTime").val(),
       status: $("#consultancyStatus").val(),
       topic: $("#consultancyTopic").val(),
+      location: $("#consultancyLocation").val(),
       consultant: $("#consultancyConsultant").val(),
       notes: $("#consultancyNotes").val(),
-      actionPlan: $("#consultancyActionPlan").val()
+      actionPlan: $("#consultancyActionPlan").val(),
+      sessionRating:
+        $("#consultancyRating").val() === ""
+          ? null
+          : Number($("#consultancyRating").val())
     };
 
     if (!payload.companyId || !payload.date || !payload.topic || !payload.consultant) {
@@ -2066,10 +2610,32 @@
       return;
     }
 
-    DataService.saveConsultancy(payload);
-    $("#consultancyForm")[0].reset();
-    refreshDataAndRender();
-    UiService.showToast("Consultoria salva com sucesso.", "success");
+    try {
+      const consultancyId = $("#consultancyId").val();
+
+      if (consultancyId) {
+        DataService.updateConsultancy(consultancyId, payload);
+      } else {
+        DataService.saveConsultancy(payload);
+      }
+
+      clearConsultancyForm();
+      refreshDataAndRender();
+      UiService.showToast(
+        consultancyId
+          ? "Consultoria atualizada com sucesso."
+          : "Consultoria salva com sucesso.",
+        "success"
+      );
+    } catch (error) {
+      UiService.showToast(error.message, "danger");
+    }
+  };
+
+  const clearConsultancyForm = () => {
+    $("#consultancyForm")[0]?.reset();
+    $("#consultancyId").val("");
+    $("#consultancySubmitLabel").text("Salvar consultoria");
   };
 
   /* Atualiza as informações da empresa selecionada no formulário de notificações. */
@@ -2231,6 +2797,41 @@
   const renderNotifications = () => {
     populateSharedSelectors();
     const $sel = $("#notificationCompanyId");
+    const notifications = appState.currentNotifications || [];
+
+    $("#notificationHistory").html(
+      notifications.length
+        ? notifications
+            .map(
+              (notification) => `
+                <div class="report-history-card">
+                  <div class="d-flex flex-wrap justify-content-between gap-2 mb-2">
+                    <div>
+                      <div class="fw-bold">${UiService.escapeHtml(notification.companyName)}</div>
+                      <div class="report-history-meta">
+                        ${new Date(notification.createdAt).toLocaleString("pt-BR")}
+                        • ${UiService.escapeHtml(notification.createdBy || "-")}
+                      </div>
+                    </div>
+                    <span class="soft-badge bg-info-subtle text-info-emphasis border border-info-subtle">
+                      ${UiService.escapeHtml(notification.deliveryStatus || "Registrada")}
+                    </span>
+                  </div>
+                  <div>${UiService.escapeHtml(notification.content || "")}</div>
+                  ${
+                    notification.attachment?.name
+                      ? `<div class="small text-muted mt-2">Arquivo referenciado: ${UiService.escapeHtml(notification.attachment.name)}</div>`
+                      : ""
+                  }
+                </div>
+              `
+            )
+            .join("")
+        : UiService.renderEmptyState(
+            "Nenhuma comunicação registrada",
+            "Os comunicados cadastrados aparecerão aqui e serão incluídos no JSON exportado."
+          )
+    );
 
     if (!appState.selectedNotificationCompanyId) {
       $sel.val("");
@@ -2264,22 +2865,22 @@
       return;
     }
 
-    /* Simula envio da notificação */
     const notification = {
-      id: `notif-${Date.now()}`,
       companyId,
       email,
-      description,
-      fileName: appState.selectedNotificationFile ? appState.selectedNotificationFile.name : null,
-      sentAt: new Date().toLocaleString("pt-BR"),
-      sentBy: AuthService.getSession().name
+      content: description.trim(),
+      attachment: appState.selectedNotificationFile
+        ? {
+            name: appState.selectedNotificationFile.name,
+            type: appState.selectedNotificationFile.type,
+            size: appState.selectedNotificationFile.size
+          }
+        : null,
+      createdBy: AuthService.getSession()?.name || "Usuário"
     };
 
-    /* Aqui você poderia armazenar em localStorage se desejasse persistir histórico */
-    /* DataService.saveNotification(notification); */
-
-    /* Exibe modal de sucesso */
-    showNotificationSuccessModal(notification);
+    const savedNotification = DataService.saveNotification(notification);
+    showNotificationSuccessModal(savedNotification);
 
     /* Limpa o formulário */
     $("#notificationForm")[0].reset();
@@ -2288,6 +2889,7 @@
     $("#filePreview").empty();
     $("#notificationCompanyId").val("").trigger("change");
     $("#notificationCompanyEmail").val("");
+    refreshDataAndRender();
   };
 
   /* Exibe modal de sucesso após envio de notificação. */
@@ -2300,26 +2902,26 @@
         <div class="notification-success-icon">
           <i class="bi bi-check-circle-fill"></i>
         </div>
-        <h5 class="mb-3">Notificação enviada com sucesso!</h5>
+        <h5 class="mb-3">Comunicação registrada</h5>
         <div class="text-muted small mb-4">
           <p class="mb-2"><strong>Empresa:</strong> ${UiService.escapeHtml(companyName)}</p>
           <p class="mb-2"><strong>Email:</strong> ${UiService.escapeHtml(notification.email)}</p>
-          ${notification.fileName ? `<p class="mb-2"><strong>Arquivo:</strong> ${UiService.escapeHtml(notification.fileName)}</p>` : ""}
-          <p class="mb-0"><strong>Enviado em:</strong> ${UiService.escapeHtml(notification.sentAt)}</p>
+          ${notification.attachment?.name ? `<p class="mb-2"><strong>Arquivo:</strong> ${UiService.escapeHtml(notification.attachment.name)}</p>` : ""}
+          <p class="mb-0"><strong>Registrado em:</strong> ${new Date(notification.createdAt).toLocaleString("pt-BR")}</p>
         </div>
-        <p class="text-muted mb-0">A notificação foi registrada e o documento foi anexado.</p>
+        <p class="text-muted mb-0">Nenhum e-mail foi enviado por esta versão local.</p>
       </div>
     `;
 
     /* Usa a abordagem de toast que já existe no projeto */
-    UiService.showToast("✓ Notificação enviada com sucesso para " + companyName, "success");
+    UiService.showToast("Comunicação registrada para " + companyName, "success");
     
     /* Exibe também um alerta visual no topo do formulário */
     const alertHtml = `
       <div class="alert alert-success notification-alert alert-dismissible fade show" role="alert">
         <i class="bi bi-check-circle-fill me-2"></i>
-        <strong>Sucesso!</strong> Notificação enviada para ${UiService.escapeHtml(companyName)}.
-        ${notification.fileName ? `<br/><small class="text-muted">Arquivo anexado: ${UiService.escapeHtml(notification.fileName)}</small>` : ""}
+        <strong>Registro salvo.</strong> Comunicação destinada a ${UiService.escapeHtml(companyName)}.
+        ${notification.attachment?.name ? `<br/><small class="text-muted">Arquivo referenciado: ${UiService.escapeHtml(notification.attachment.name)}</small>` : ""}
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
       </div>
     `;
@@ -2373,7 +2975,8 @@
     const company = context.company;
     const consultancies = context.consultancies || [];
     const evaluations = context.evaluations || [];
-    const financialRecords = context.financialRecords || [];
+    const latestEvaluation = context.latestEvaluation;
+    const financialSummary = context.financialSummary;
 
     /*
       Resumo contextual: agora é da empresa selecionada, e não mais da carteira toda.
@@ -2394,13 +2997,21 @@
         </div>
 
         <div class="report-context-item">
-          <span class="report-context-label">Classificação atual</span>
-          <span>${UiService.renderClassificationBadge(company.classification)}</span>
+          <span class="report-context-label">Classificação de maturidade</span>
+          <span>${
+            latestEvaluation
+              ? UiService.renderClassificationBadge(latestEvaluation.maturityClassification)
+              : UiService.renderClassificationBadge("Skate")
+          }</span>
         </div>
 
         <div class="report-context-item">
-          <span class="report-context-label">Score atual</span>
-          <span class="report-context-value">${Number(company.currentScore || 0).toFixed(2)}</span>
+          <span class="report-context-label">Resultado da última avaliação</span>
+          <span>${
+            latestEvaluation
+              ? UiService.renderClassificationBadge(latestEvaluation.classification)
+              : '<span class="text-muted">Sem avaliação no período</span>'
+          }</span>
         </div>
 
         <div class="report-context-item">
@@ -2418,10 +3029,6 @@
           <span class="report-context-value">${evaluations.length}</span>
         </div>
 
-        <div class="report-context-item">
-          <span class="report-context-label">Registros financeiros no período</span>
-          <span class="report-context-value">${financialRecords.length}</span>
-        </div>
       </div>
     `);
 
@@ -2498,20 +3105,24 @@
         </div>
       `;
 
-    const financialBlock = financialRecords.length
+    const financialBlock = latestEvaluation
       ? `
         <div class="report-history-card">
-          <div class="fw-bold mb-2">Resumo financeiro do período</div>
-          ${financialRecords
+          <div class="fw-bold mb-2">Dados financeiros da última avaliação</div>
+          <div class="report-history-meta mb-3">
+            ${getEvaluationSemester(latestEvaluation)}º semestre de ${getEvaluationYear(latestEvaluation)}
+            • Nota do eixo Capital: ${
+              financialSummary.axisScore === null
+                ? "-"
+                : Number(financialSummary.axisScore).toFixed(2)
+            }
+          </div>
+          ${financialSummary.rows
             .map(
-              (record) => `
-                <div class="mb-3">
-                  <strong>${record.year}</strong>
-                  <div class="report-history-meta">
-                    Receita: R$ ${Number(record.revenue || 0).toLocaleString("pt-BR")} •
-                    Lucro: R$ ${Number(record.profit || 0).toLocaleString("pt-BR")} •
-                    Margem bruta: ${Number(record.grossMargin || 0).toFixed(2)}%
-                  </div>
+              (row) => `
+                <div class="summary-item py-2">
+                  <span>${UiService.escapeHtml(row.label)}</span>
+                  <strong>${UiService.escapeHtml(row.value)}</strong>
                 </div>
               `
             )
@@ -2521,7 +3132,7 @@
       : `
         <div class="report-history-card">
           <div class="fw-bold mb-2">Resumo financeiro do período</div>
-          <div class="report-history-meta">Nenhum registro financeiro encontrado.</div>
+          <div class="report-history-meta">Nenhuma avaliação encontrada no período.</div>
         </div>
       `;
 

@@ -177,13 +177,18 @@ window.CalculationService = (() => {
     Mantém a lógica agregada fora da interface.
   */
   const calculateDashboardMetrics = (companies, consultancies, savedEvaluations) => {
+    const companyIds = new Set(companies.map((company) => company.id));
     const totalCompanies = companies.length;
     const incubating = companies.filter((company) => company.status === "Incubada").length;
     const graduated = companies.filter((company) => company.status === "Graduada").length;
     const critical = companies.filter((company) => company.status === "Crítica").length;
     const avgScore = average(companies.map((company) => company.currentScore || 0));
-    const scheduledConsultancies = consultancies.filter((item) => item.status === "Agendada").length;
-    const savedEvaluationCount = savedEvaluations.length;
+    const scheduledConsultancies = consultancies.filter(
+      (item) => item.status === "Agendada" && companyIds.has(item.companyId)
+    ).length;
+    const savedEvaluationCount = savedEvaluations.filter((item) =>
+      companyIds.has(item.companyId)
+    ).length;
 
     return {
       totalCompanies,

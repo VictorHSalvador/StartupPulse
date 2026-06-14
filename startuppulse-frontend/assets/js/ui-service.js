@@ -17,7 +17,8 @@ window.UiService = (() => {
     const map = {
       Incubada: "bg-info-subtle text-info-emphasis border border-info-subtle",
       Graduada: "bg-success-subtle text-success-emphasis border border-success-subtle",
-      Crítica: "bg-danger-subtle text-danger-emphasis border border-danger-subtle"
+      Crítica: "bg-danger-subtle text-danger-emphasis border border-danger-subtle",
+      Desligada: "bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle"
     };
 
     return `<span class="soft-badge ${map[status] || 'bg-secondary-subtle text-secondary-emphasis'}">${escapeHtml(
@@ -30,7 +31,12 @@ window.UiService = (() => {
     const map = {
       Inapta: "bg-danger-subtle text-danger-emphasis border border-danger-subtle",
       Satisfatória: "bg-warning-subtle text-warning-emphasis border border-warning-subtle",
-      "Apta a Graduar": "bg-success-subtle text-success-emphasis border border-success-subtle"
+      "Apta a Graduar": "bg-success-subtle text-success-emphasis border border-success-subtle",
+      Skate: "bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle",
+      Bicicleta: "bg-info-subtle text-info-emphasis border border-info-subtle",
+      Carro: "bg-primary-subtle text-primary-emphasis border border-primary-subtle",
+      Avião: "bg-warning-subtle text-warning-emphasis border border-warning-subtle",
+      Foguete: "bg-success-subtle text-success-emphasis border border-success-subtle"
     };
 
     return `<span class="soft-badge ${map[classification] || 'bg-secondary-subtle text-secondary-emphasis'}">${escapeHtml(

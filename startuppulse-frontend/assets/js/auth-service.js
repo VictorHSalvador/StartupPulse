@@ -16,7 +16,24 @@ window.AuthService = (() => {
   */
   const getUsers = () => {
     const rawUsers = localStorage.getItem(USERS_KEY);
-    return rawUsers ? JSON.parse(rawUsers) : [];
+
+    if (!rawUsers) {
+      return [];
+    }
+
+    try {
+      const users = JSON.parse(rawUsers);
+      return Array.isArray(users)
+        ? users.map((user) => ({
+            ...user,
+            role: user.role || (user.id === "user-001" ? "Gestor" : "Agente"),
+            status: user.status || "Ativo"
+          }))
+        : [];
+    } catch (error) {
+      localStorage.removeItem(USERS_KEY);
+      return [];
+    }
   };
 
   /*
@@ -42,7 +59,10 @@ window.AuthService = (() => {
       id: "user-001",
       name: "Administrador",
       email: "admin@incubadora.com",
-      password: "123456"
+      password: "123456",
+      role: "Gestor",
+      status: "Ativo",
+      createdAt: new Date().toISOString()
     };
 
     saveUsers([defaultUser]);
@@ -69,7 +89,10 @@ window.AuthService = (() => {
       id: `user-${Date.now()}`,
       name: name.trim(),
       email: normalizedEmail,
-      password: password
+      password: password,
+      role: "Agente",
+      status: "Ativo",
+      createdAt: new Date().toISOString()
     };
 
     users.push(newUser);
@@ -90,6 +113,7 @@ window.AuthService = (() => {
     const user = users.find(
       (item) =>
         item.email.toLowerCase() === normalizedEmail &&
+        item.status !== "Inativo" &&
         item.password === password
     );
 
@@ -100,7 +124,8 @@ window.AuthService = (() => {
     const sessionUser = {
       id: user.id,
       name: user.name,
-      email: user.email
+      email: user.email,
+      role: user.role || "Agente"
     };
 
     localStorage.setItem(SESSION_KEY, JSON.stringify(sessionUser));
@@ -114,7 +139,21 @@ window.AuthService = (() => {
   */
   const getSession = () => {
     const rawSession = localStorage.getItem(SESSION_KEY);
-    return rawSession ? JSON.parse(rawSession) : null;
+
+    if (!rawSession) {
+      return null;
+    }
+
+    try {
+      const session = JSON.parse(rawSession);
+      return {
+        ...session,
+        role: session.role || (session.id === "user-001" ? "Gestor" : "Agente")
+      };
+    } catch (error) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
   };
 
   /*

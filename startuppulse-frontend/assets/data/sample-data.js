@@ -18,9 +18,9 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
       representative: "Helena Duarte",
       email: "contato@novatechsolutions.com",
       phone: "(22) 99999-1001",
-      incubationYear: 3,
+      incubationYear: 2023,
       status: "Incubada",
-      classification: "Satisfatória",
+      classification: "Skate",
       currentScore: 4.23,
       employees: 9,
       capital: "R$ 180.000",
@@ -41,9 +41,9 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
       representative: "Marcos Vieira",
       email: "contato@greenharvestbio.com",
       phone: "(21) 99999-1002",
-      incubationYear: 2,
+      incubationYear: 2024,
       status: "Incubada",
-      classification: "Satisfatória",
+      classification: "Skate",
       currentScore: 3.35,
       employees: 7,
       capital: "R$ 95.000",
@@ -64,9 +64,9 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
       representative: "Carla Menezes",
       email: "contato@urbanflowmobility.com",
       phone: "(11) 99999-1003",
-      incubationYear: 1,
+      incubationYear: 2025,
       status: "Incubada",
-      classification: "Satisfatória",
+      classification: "Skate",
       currentScore: 2.62,
       employees: 5,
       capital: "R$ 60.000",
@@ -87,14 +87,14 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
       representative: "Rafael Costa",
       email: "contato@medvaulthealth.com",
       phone: "(21) 99999-1004",
-      incubationYear: 4,
+      incubationYear: 2022,
       status: "Incubada",
-      classification: "Satisfatória",
+      classification: "Skate",
       currentScore: 4.52,
       employees: 12,
       capital: "R$ 250.000",
       products: "Solução de prontuário e compliance clínico.",
-      notes: "Empresa próxima de graduação.",
+      notes: "",
       customFields: {
         stage: "Escala",
         city: "Niterói",
@@ -110,9 +110,9 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
       representative: "Bianca Freitas",
       email: "contato@edusparklearning.com",
       phone: "(27) 99999-1005",
-      incubationYear: 2,
+      incubationYear: 2024,
       status: "Incubada",
-      classification: "Satisfatória",
+      classification: "Skate",
       currentScore: 3.35,
       employees: 6,
       capital: "R$ 110.000",
@@ -133,9 +133,9 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
       representative: "Gustavo Leal",
       email: "contato@cloudforgedevops.com",
       phone: "(31) 99999-1006",
-      incubationYear: 1,
+      incubationYear: 2025,
       status: "Crítica",
-      classification: "Inapta",
+      classification: "Skate",
       currentScore: 1.87,
       employees: 4,
       capital: "R$ 40.000",
@@ -156,9 +156,9 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
       representative: "Vanessa Ribeiro",
       email: "contato@aquapuresystems.com",
       phone: "(41) 99999-1007",
-      incubationYear: 3,
+      incubationYear: 2023,
       status: "Graduada",
-      classification: "Apta a Graduar",
+      classification: "Skate",
       currentScore: 4.57,
       employees: 11,
       capital: "R$ 320.000",
@@ -179,9 +179,9 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
       representative: "Leandro Pinto",
       email: "contato@finedgeanalytics.com",
       phone: "(61) 99999-1008",
-      incubationYear: 2,
+      incubationYear: 2024,
       status: "Incubada",
-      classification: "Satisfatória",
+      classification: "Skate",
       currentScore: 3.75,
       employees: 8,
       capital: "R$ 135.000",
@@ -200,7 +200,7 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
     A estrutura já foi pensada para futura troca do cálculo simples por MCDA.
   */
   evaluationModel: {
-    version: "v4-evaluation-history",
+    version: "v5-evaluation-period",
     scale: [0, 1, 2, 3, 4, 5],
     scaleLabels: {
       0: "Não atende",
@@ -265,18 +265,17 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
         placeholder: "000.000.000-00"
       },
       {
-        name: "monitoringNumber",
-        label: "Número do monitoramento",
+        name: "year",
+        label: "Ano do monitoramento",
+        type: "number",
+        required: true
+      },
+      {
+        name: "semester",
+        label: "Semestre do monitoramento",
         type: "select",
         required: true,
-        options: [
-          "1º monitoramento",
-          "2º monitoramento",
-          "3º monitoramento",
-          "4º monitoramento",
-          "5º monitoramento",
-          "6º monitoramento"
-        ]
+        options: ["1", "2"]
       }
     ],
     customFieldSchema: [
@@ -291,12 +290,6 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
         label: "Cidade",
         type: "text",
         placeholder: "Cidade principal de operação"
-      },
-      {
-        key: "cpf",
-        label: "CPF do responsável",
-        type: "text",
-        placeholder: "000.000.000-00"
       },
       {
         key: "entryMethod",
@@ -545,9 +538,6 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
     },
     evaluation_detail: {
       label: "Detalhamento da avaliação"
-    },
-    relevant_notes: {
-      label: "Observações relevantes"
     }
   },
 
@@ -565,8 +555,7 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
         "consultancy_history",
         "cerne_summary",
         "financial_summary",
-        "evaluation_history",
-        "relevant_notes"
+        "evaluation_history"
       ]
     },
     performance: {
@@ -574,87 +563,24 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
       sections: [
         "company_identity",
         "cerne_summary",
-        "evaluation_history",
-        "relevant_notes"
+        "evaluation_history"
       ]
     },
     financial: {
       label: "Relatório Financeiro",
       sections: [
         "company_identity",
-        "financial_summary",
-        "relevant_notes"
+        "financial_summary"
       ]
     },
     evaluation: {
       label: "Relatório de Avaliação",
       sections: [
         "company_identity",
-        "evaluation_detail",
-        "relevant_notes"
+        "evaluation_detail"
       ]
     }
   },
-
-  /*
-  Registros financeiros por empresa e por ano.
-  Essa estrutura será usada pelos relatórios financeiro e completo.
-  Ela foi feita para permitir expansão futura, como balancete, DRE simplificada e fluxo de caixa detalhado.
-  */
-  financialRecords: [
-    {
-      id: "fin-001",
-      companyId: "emp-001",
-      year: 2025,
-      revenue: 420000,
-      profit: 78000,
-      grossMargin: 48,
-      contributionMargin: 34,
-      operationalExpenses: 120000,
-      cashFlowSummary: "Fluxo de caixa positivo no segundo semestre.",
-      observations: "Receita recorrente cresceu com contratos enterprise.",
-      sections: ["financial_summary"]
-    },
-    {
-      id: "fin-002",
-      companyId: "emp-001",
-      year: 2026,
-      revenue: 510000,
-      profit: 110000,
-      grossMargin: 52,
-      contributionMargin: 38,
-      operationalExpenses: 145000,
-      cashFlowSummary: "Boa previsibilidade de caixa e expansão da carteira B2B.",
-      observations: "Aumento de margem após revisão de precificação.",
-      sections: ["financial_summary"]
-    },
-    {
-      id: "fin-003",
-      companyId: "emp-004",
-      year: 2025,
-      revenue: 680000,
-      profit: 150000,
-      grossMargin: 57,
-      contributionMargin: 41,
-      operationalExpenses: 190000,
-      cashFlowSummary: "Fluxo de caixa estável e crescimento sustentado.",
-      observations: "Empresa em estágio próximo de graduação.",
-      sections: ["financial_summary"]
-    },
-    {
-      id: "fin-004",
-      companyId: "emp-006",
-      year: 2025,
-      revenue: 90000,
-      profit: -25000,
-      grossMargin: 19,
-      contributionMargin: 8,
-      operationalExpenses: 70000,
-      cashFlowSummary: "Caixa pressionado e baixa previsibilidade.",
-      observations: "Empresa crítica, com necessidade de intervenção comercial e financeira.",
-      sections: ["financial_summary"]
-    }
-  ],
 
   /*
     Histórico inicial de avaliações salvas.
@@ -913,7 +839,8 @@ window.STARTUP_PULSE_SAMPLE_DATA = {
         }
       }
     }
-  ]
+  ],
+  notifications: []
 };
 
 window.STARTUP_PULSE_SAMPLE_DATA.legacyEvaluationAxes =

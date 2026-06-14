@@ -288,6 +288,7 @@
                 <option value="Incubada">Incubada</option>
                 <option value="Graduada">Graduada</option>
                 <option value="Crítica">Crítica</option>
+                <option value="Desligada">Desligada</option>
               </select>
             </div>
           </div>
@@ -391,14 +392,17 @@
                   <option value="Incubada">Incubada</option>
                   <option value="Graduada">Graduada</option>
                   <option value="Crítica">Crítica</option>
+                  <option value="Desligada">Desligada</option>
                 </select>
               </div>
               <div class="col-12 col-lg-3">
                 <select class="form-select" id="companyClassificationFilter">
                   <option value="all">Todas as classificações</option>
-                  <option value="Inapta">Inapta</option>
-                  <option value="Satisfatória">Satisfatória</option>
-                  <option value="Apta a Graduar">Apta a Graduar</option>
+                  <option value="Skate">Skate</option>
+                  <option value="Bicicleta">Bicicleta</option>
+                  <option value="Carro">Carro</option>
+                  <option value="Avião">Avião</option>
+                  <option value="Foguete">Foguete</option>
                 </select>
               </div>
             </div>
@@ -611,6 +615,7 @@
                   <p class="section-subtitle mb-0">Agende ou registre uma sessão de acompanhamento.</p>
                 </div>
                 <form id="consultancyForm" class="row g-3">
+                  <input type="hidden" id="consultancyId" />
                   <div class="col-12">
                     <label class="form-label">Empresa</label>
                     <select class="form-select" id="consultancyCompanyId" required></select>
@@ -620,16 +625,25 @@
                     <input type="date" class="form-control" id="consultancyDate" required />
                   </div>
                   <div class="col-md-6">
+                    <label class="form-label">Horario</label>
+                    <input type="time" class="form-control" id="consultancyTime" />
+                  </div>
+                  <div class="col-md-6">
                     <label class="form-label">Status</label>
                     <select class="form-select" id="consultancyStatus" required>
                       <option value="Agendada">Agendada</option>
                       <option value="Realizada">Realizada</option>
+                      <option value="Cancelada">Cancelada</option>
                       <option value="Não compareceu">Não compareceu</option>
                     </select>
                   </div>
                   <div class="col-12">
                     <label class="form-label">Tema</label>
                     <input type="text" class="form-control" id="consultancyTopic" required />
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Local ou link</label>
+                    <input type="text" class="form-control" id="consultancyLocation" />
                   </div>
                   <div class="col-12">
                     <label class="form-label">Consultor</label>
@@ -643,12 +657,16 @@
                     <label class="form-label">Plano de ação</label>
                     <textarea class="form-control" id="consultancyActionPlan" rows="4"></textarea>
                   </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Nota da sessao</label>
+                    <input type="number" min="0" max="5" step="0.1" class="form-control" id="consultancyRating" />
+                  </div>
                   <div class="col-12 d-flex gap-2">
                     <button type="submit" class="btn btn-primary">
                       <i class="bi bi-floppy"></i>
-                      Salvar consultoria
+                      <span id="consultancySubmitLabel">Salvar consultoria</span>
                     </button>
-                    <button type="reset" class="btn btn-outline-secondary">
+                    <button type="button" class="btn btn-outline-secondary" id="btnClearConsultancy">
                       Limpar
                     </button>
                   </div>
@@ -748,7 +766,7 @@
                 </div>
                 <div class="report-action-title">Relatório Financeiro</div>
                 <div class="report-action-text">
-                  Informações financeiras estruturadas e leitura do eixo Capital para o período selecionado.
+                  Dados do cadastro e respostas do eixo Capital da avaliação mais recente no período.
                 </div>
               </button>
             </div>
@@ -800,7 +818,7 @@
             <div>
               <h1 class="page-title mb-1">Notificação</h1>
               <p class="page-subtitle mb-0">
-                Enviar notificações e comunicados para as empresas incubadas.
+                Registrar comunicados destinados às empresas incubadas.
               </p>
             </div>
           </div>
@@ -810,7 +828,7 @@
               <div class="app-card">
                 <div class="card-header-lite mb-4">
                   <h2 class="section-title mb-1">Novo comunicado</h2>
-                  <p class="section-subtitle mb-0">Preencha o formulário para enviar uma notificação para a empresa.</p>
+                  <p class="section-subtitle mb-0">O registro fica salvo localmente. O envio de e-mail depende de integração futura.</p>
                 </div>
 
                 <form id="notificationForm" class="row g-3">
@@ -853,8 +871,8 @@
                   <!-- Botões -->
                   <div class="col-12 d-flex gap-2">
                     <button type="submit" class="btn btn-primary">
-                      <i class="bi bi-send"></i>
-                      Enviar notificação
+                      <i class="bi bi-journal-check"></i>
+                      Registrar comunicação
                     </button>
                     <button type="reset" class="btn btn-outline-secondary">
                       <i class="bi bi-arrow-clockwise"></i>
@@ -877,6 +895,13 @@
                 </div>
               </div>
             </div>
+          </div>
+          <div class="app-card mt-4">
+            <div class="card-header-lite mb-3">
+              <h2 class="section-title mb-1">Histórico de comunicações</h2>
+              <p class="section-subtitle mb-0">Registros incluídos no estado JSON da aplicação.</p>
+            </div>
+            <div id="notificationHistory"></div>
           </div>
         </section>
       </main>
@@ -913,6 +938,10 @@
                   <input type="email" class="form-control" id="companyEmail" required />
                 </div>
                 <div class="col-md-4">
+                  <label class="form-label">CPF do representante</label>
+                  <input type="text" class="form-control" id="companyRepresentativeCpf" />
+                </div>
+                <div class="col-md-4">
                   <label class="form-label">Telefone</label>
                   <input type="text" class="form-control" id="companyPhone" />
                 </div>
@@ -922,7 +951,7 @@
                 </div>
                 <div class="col-md-4">
                   <label class="form-label">Ano de incubação</label>
-                  <input type="number" class="form-control" id="companyIncubationYear" min="1" max="10" required />
+                  <input type="number" class="form-control" id="companyIncubationYear" min="1900" max="2100" required />
                 </div>
                 <div class="col-md-4">
                   <label class="form-label">Status</label>
@@ -930,6 +959,7 @@
                     <option value="Incubada">Incubada</option>
                     <option value="Graduada">Graduada</option>
                     <option value="Crítica">Crítica</option>
+                    <option value="Desligada">Desligada</option>
                   </select>
                 </div>
                 <div class="col-md-4">
@@ -942,11 +972,14 @@
                 </div>
                 <div class="col-md-4">
                   <label class="form-label">Classificação atual</label>
-                  <select class="form-select" id="companyClassification">
-                    <option value="Inapta">Inapta</option>
-                    <option value="Satisfatória">Satisfatória</option>
-                    <option value="Apta a Graduar">Apta a Graduar</option>
+                  <select class="form-select" id="companyClassification" disabled>
+                    <option value="Skate">Skate</option>
+                    <option value="Bicicleta">Bicicleta</option>
+                    <option value="Carro">Carro</option>
+                    <option value="Avião">Avião</option>
+                    <option value="Foguete">Foguete</option>
                   </select>
+                  <div class="form-text">Definida no fim da avaliação mais recente.</div>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">Produtos/Serviços</label>

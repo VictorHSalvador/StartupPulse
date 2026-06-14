@@ -18,19 +18,66 @@ window.ReportService = (() => {
   };
 
   /*
-    Formata valores monetários em padrão brasileiro.
-  */
-  const formatCurrency = (value) => {
-    return Number(value || 0).toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL"
-    });
-  };
-
-  /*
     Formata texto simples para evitar undefined em PDF.
   */
   const safeText = (value) => String(value ?? "-");
+
+  const formatDate = (value) => {
+    const date = String(value || "");
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return safeText(value);
+    }
+
+    return new Date(`${date}T00:00:00`).toLocaleDateString("pt-BR");
+  };
+
+  const getReportCompany = (context) => {
+    if (context.reportType !== "evaluation") {
+      return context.company;
+    }
+
+    return {
+      ...(context.selectedEvaluation?.companySnapshot || context.company),
+      classification:
+        context.selectedEvaluation?.maturityClassification ||
+        context.company?.classification ||
+        "Skate"
+    };
+  };
+
+  const getLatestEvaluation = (context) => {
+    if (context.reportType === "evaluation" && context.selectedEvaluation) {
+      return context.selectedEvaluation;
+    }
+
+    return [...(context.evaluations || [])].sort((a, b) => {
+      if (Number(a.year) !== Number(b.year)) {
+        return Number(b.year) - Number(a.year);
+      }
+
+      if (Number(a.semester) !== Number(b.semester)) {
+        return Number(b.semester) - Number(a.semester);
+      }
+
+      return new Date(b.date) - new Date(a.date);
+    })[0] || null;
+  };
+
+  const getEvaluationPeriodLabel = (evaluation) => {
+    const date = String(evaluation?.date || "");
+    const year = Number(evaluation?.year || date.slice(0, 4));
+    const month = Number(date.slice(5, 7));
+    const semester = Number(
+      evaluation?.semester || (month >= 1 && month <= 6 ? 1 : 2)
+    );
+
+    if (Number.isNaN(year)) {
+      return "-";
+    }
+
+    return `${semester}º semestre de ${year}`;
+  };
 
   /*
     Cria nome padronizado para o arquivo PDF.
@@ -162,6 +209,8 @@ window.ReportService = (() => {
     Cria um pequeno resumo executivo com score e classificação.
   */
   const addExecutiveSummaryBox = (doc, context, y) => {
+    const company = getReportCompany(context);
+    const evaluation = getLatestEvaluation(context);
     doc.setFillColor(248, 251, 254);
     doc.roundedRect(40, y, 515, 74, 10, 10, "F");
 
@@ -173,22 +222,53 @@ window.ReportService = (() => {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(95, 116, 139);
-    doc.text(`Empresa: ${safeText(context.company.name)}`, 54, y + 40);
-    doc.text(`Classificação atual: ${safeText(context.company.classification)}`, 54, y + 56);
+    doc.text(`Empresa: ${safeText(company.name)}`, 54, y + 40);
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.setTextColor(15, 68, 104);
-    doc.text(Number(context.company.currentScore || 0).toFixed(2), 500, y + 36, {
-      align: "right"
-    });
+    if (context.reportType === "financial") {
+      const axisScore = context.financialSummary?.axisScore;
+      const maturity =
+        context.latestEvaluation?.maturityClassification ||
+        company.classification ||
+        "Skate";
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(95, 116, 139);
-    doc.text("Score atual", 500, y + 52, {
-      align: "right"
-    });
+      doc.text(`Classificação de maturidade: ${safeText(maturity)}`, 54, y + 56);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.setTextColor(15, 68, 104);
+      doc.text(
+        axisScore === null || axisScore === undefined
+          ? "-"
+          : Number(axisScore).toFixed(2),
+        500,
+        y + 36,
+        { align: "right" }
+      );
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(95, 116, 139);
+      doc.text("Nota do eixo Capital", 500, y + 52, { align: "right" });
+    } else {
+      const score = evaluation
+        ? Number(evaluation.overallScore || 0)
+        : Number(company.currentScore || 0);
+      const classification =
+        evaluation?.maturityClassification ||
+        company.classification ||
+        "Skate";
+      const scoreLabel = evaluation
+        ? `Score de ${getEvaluationPeriodLabel(evaluation)}`
+        : "Score cadastral atual";
+
+      doc.text(`Classificação de maturidade: ${safeText(classification)}`, 54, y + 56);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.setTextColor(15, 68, 104);
+      doc.text(score.toFixed(2), 500, y + 36, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(95, 116, 139);
+      doc.text(scoreLabel, 500, y + 52, { align: "right" });
+    }
 
     return y + 92;
   };
@@ -217,22 +297,26 @@ window.ReportService = (() => {
     Seção: identificação da empresa.
   */
   const addCompanyIdentitySection = (doc, context, y) => {
+    const company = getReportCompany(context);
     y = addSectionTitle(doc, "Identificação da empresa", y);
 
     return addKeyValueTable(
       doc,
       [
-        ["Nome fantasia", safeText(context.company.name)],
-        ["Razão social", safeText(context.company.corporateName)],
-        ["CNPJ", safeText(context.company.cnpj)],
-        ["Representante", safeText(context.company.representative)],
-        ["E-mail", safeText(context.company.email)],
-        ["Telefone", safeText(context.company.phone)],
-        ["Setor", safeText(context.company.sector)],
-        ["Ano de incubação", safeText(context.company.incubationYear)],
-        ["Status", safeText(context.company.status)],
-        ["Classificação atual", safeText(context.company.classification)],
-        ["Score atual", Number(context.company.currentScore || 0).toFixed(2)]
+        ["Nome fantasia", safeText(company.name)],
+        ["Razão social", safeText(company.corporateName)],
+        ["CNPJ", safeText(company.cnpj)],
+        ["Representante", safeText(company.representative)],
+        ["CPF do representante", safeText(company.representativeCpf)],
+        ["E-mail", safeText(company.email)],
+        ["Telefone", safeText(company.phone)],
+        ["Setor", safeText(company.sector)],
+        ["Ano de incubação", safeText(company.incubationYear)],
+        ["Status cadastral", safeText(company.status)],
+        [
+          "Classificação de maturidade",
+          safeText(company.classification || "Skate")
+        ]
       ],
       y
     );
@@ -242,19 +326,23 @@ window.ReportService = (() => {
     Seção: visão geral da empresa.
   */
   const addCompanyOverviewSection = (doc, context, y) => {
+    const company = getReportCompany(context);
     y = addSectionTitle(doc, "Visão geral da empresa", y);
 
     y = addKeyValueTable(
       doc,
       [
-        ["Funcionários", safeText(context.company.employees)],
-        ["Capital", safeText(context.company.capital)],
-        ["Produtos/Serviços", safeText(context.company.products)]
+        ["Funcionários", safeText(company.employees)],
+        ["Capital informado no cadastro", safeText(company.capital)],
+        ["Produtos/Serviços", safeText(company.products)]
       ],
       y
     );
 
-    y = addParagraph(doc, "Observações gerais", context.company.notes, y);
+    if (String(company.notes || "").trim()) {
+      y = addParagraph(doc, "Observações cadastrais", company.notes, y);
+    }
+
     return y + 4;
   };
 
@@ -266,7 +354,7 @@ window.ReportService = (() => {
 
     const body = context.consultancies.length
       ? context.consultancies.map((item) => [
-          safeText(item.date),
+          formatDate(item.date),
           safeText(item.topic),
           safeText(item.status),
           safeText(item.consultant),
@@ -302,7 +390,7 @@ window.ReportService = (() => {
 
     const body = context.evaluations.length
       ? context.evaluations.map((evaluation) => [
-          safeText(evaluation.date),
+          formatDate(evaluation.date),
           Number(evaluation.overallScore || 0).toFixed(2),
           safeText(evaluation.classification),
           Number(evaluation.axisScores?.Empreendedor || 0).toFixed(2),
@@ -346,26 +434,46 @@ window.ReportService = (() => {
     Seção: resumo financeiro.
   */
   const addFinancialSummarySection = (doc, context, y) => {
-    y = addSectionTitle(doc, "Resumo financeiro", y);
+    const summary = context.financialSummary;
+    const evaluation = summary?.evaluation;
 
-    const body = context.financialRecords.length
-      ? context.financialRecords.map((record) => [
-          safeText(record.year),
-          formatCurrency(record.revenue),
-          formatCurrency(record.profit),
-          `${Number(record.grossMargin || 0).toFixed(2)}%`,
-          `${Number(record.contributionMargin || 0).toFixed(2)}%`,
-          formatCurrency(record.operationalExpenses),
-          safeText(record.cashFlowSummary)
-        ])
-      : [["-", "-", "-", "-", "-", "-", "Nenhum registro financeiro encontrado."]];
+    y = addSectionTitle(doc, "Dados financeiros e eixo Capital", y);
+
+    if (!evaluation) {
+      y = addParagraph(
+        doc,
+        "Origem dos dados",
+        "Não há avaliação no período selecionado. Apenas os dados cadastrais disponíveis são apresentados.",
+        y
+      );
+    } else {
+      y = addKeyValueTable(
+        doc,
+        [
+          ["Avaliação utilizada", formatDate(evaluation.date)],
+          ["Período", getEvaluationPeriodLabel(evaluation)],
+          [
+            "Nota do eixo Capital",
+            summary.axisScore === null || summary.axisScore === undefined
+              ? "-"
+              : Number(summary.axisScore).toFixed(2)
+          ],
+          ["Resultado avaliativo", safeText(evaluation.classification)],
+          [
+            "Classificação de maturidade",
+            safeText(evaluation.maturityClassification || "Skate")
+          ]
+        ],
+        y
+      );
+    }
 
     doc.autoTable({
       startY: y,
       theme: "grid",
       styles: {
         font: "helvetica",
-        fontSize: 8.5,
+        fontSize: 9,
         cellPadding: 5,
         textColor: [22, 50, 79]
       },
@@ -373,19 +481,29 @@ window.ReportService = (() => {
         fillColor: [15, 68, 104],
         textColor: [255, 255, 255]
       },
-      head: [[
-        "Ano",
-        "Receita",
-        "Lucro",
-        "Margem Bruta",
-        "Margem Contrib.",
-        "Desp. Operacionais",
-        "Fluxo de Caixa"
-      ]],
-      body
+      columnStyles: {
+        0: { cellWidth: 300, fontStyle: "bold" },
+        1: { cellWidth: 215 }
+      },
+      head: [["Informação coletada", "Valor"]],
+      body: (summary?.rows || []).map((row) => [
+        safeText(row.label),
+        safeText(row.value)
+      ])
     });
 
-    return doc.lastAutoTable.finalY + 18;
+    y = doc.lastAutoTable.finalY + 18;
+
+    if (String(summary?.indicatorJustification || "").trim()) {
+      y = addParagraph(
+        doc,
+        "Justificativa da nota do eixo Capital",
+        summary.indicatorJustification,
+        y
+      );
+    }
+
+    return y;
   };
 
   /*
@@ -402,11 +520,20 @@ window.ReportService = (() => {
       y = addKeyValueTable(
         doc,
         [
-          ["Data da avaliação", safeText(evaluation.date)],
+          ["Período do monitoramento", getEvaluationPeriodLabel(evaluation)],
+          ["Data da avaliação", formatDate(evaluation.date)],
           ["Avaliador", safeText(evaluation.evaluator)],
           ["E-mail do avaliador", safeText(evaluation.evaluatorEmail)],
           ["Score geral", Number(evaluation.overallScore || 0).toFixed(2)],
-          ["Classificação", safeText(evaluation.classification)]
+          [
+            "Resultado avaliativo sugerido",
+            safeText(evaluation.suggestedClassification || evaluation.classification)
+          ],
+          [
+            "Classificação de maturidade",
+            safeText(evaluation.maturityClassification || "Skate")
+          ],
+          ["Resultado avaliativo", safeText(evaluation.classification)]
         ],
         y
       );
@@ -478,8 +605,8 @@ window.ReportService = (() => {
     y = addKeyValueTable(
       doc,
       [
-        ["Monitoramento", safeText(evaluation.monitoringNumber || evaluation.info?.monitoringNumber)],
-        ["Data da avaliação", safeText(evaluation.date)],
+        ["Período do monitoramento", getEvaluationPeriodLabel(evaluation)],
+        ["Data da avaliação", formatDate(evaluation.date)],
         ["Avaliador", safeText(evaluation.evaluator)],
         ["E-mail do avaliador", safeText(evaluation.evaluatorEmail)],
         ["Responsável pela startup", safeText(evaluation.info?.representativeName)],
@@ -495,7 +622,15 @@ window.ReportService = (() => {
           )
         ],
         ["Score geral", Number(evaluation.overallScore || 0).toFixed(2)],
-        ["Classificação", safeText(evaluation.classification)]
+        [
+          "Resultado avaliativo sugerido",
+          safeText(evaluation.suggestedClassification || evaluation.classification)
+        ],
+        [
+          "Classificação de maturidade",
+          safeText(evaluation.maturityClassification || "Skate")
+        ],
+        ["Resultado avaliativo", safeText(evaluation.classification)]
       ],
       y
     );
@@ -593,33 +728,6 @@ window.ReportService = (() => {
   };
 
   /*
-    Seção: observações relevantes.
-  */
-  const addRelevantNotesSection = (doc, context, y) => {
-    y = addSectionTitle(doc, "Observações relevantes", y);
-
-    y = addParagraph(doc, "Observações da empresa", context.company.notes, y);
-
-    const financialObservations = (context.financialRecords || [])
-      .map((record) => `${record.year}: ${safeText(record.observations)}`)
-      .join(" | ");
-
-    if (financialObservations) {
-      y = addParagraph(doc, "Observações financeiras", financialObservations, y);
-    }
-
-    const evaluationObservations = (context.evaluations || [])
-      .map((evaluation) => `${evaluation.date}: ${safeText(evaluation.notes)}`)
-      .join(" | ");
-
-    if (evaluationObservations) {
-      y = addParagraph(doc, "Observações de avaliações", evaluationObservations, y);
-    }
-
-    return y;
-  };
-
-  /*
     Roteador de seções: chama a função certa para cada seção do template.
   */
   const sectionRenderers = {
@@ -629,8 +737,7 @@ window.ReportService = (() => {
     cerne_summary: addCerneSummarySection,
     financial_summary: addFinancialSummarySection,
     evaluation_history: addEvaluationHistorySection,
-    evaluation_detail: addEvaluationDetailSection,
-    relevant_notes: addRelevantNotesSection
+    evaluation_detail: addEvaluationDetailSection
   };
 
   /*
@@ -651,7 +758,7 @@ window.ReportService = (() => {
       Não usamos para o relatório de avaliação específica quando quiser algo mais objetivo?
       Aqui vamos manter para todos, porque ajuda na leitura.
     */
-    y = addExecutiveSummaryBox(doc, context, y);
+    y = addExecutiveSummaryBox(doc, { ...context, reportType }, y);
 
     const template = context.reportTemplates?.[reportType];
 
@@ -674,7 +781,7 @@ window.ReportService = (() => {
         y = 52;
       }
 
-      y = renderer(doc, context, y);
+      y = renderer(doc, { ...context, reportType }, y);
     });
 
     addFooterToAllPages(doc);
@@ -739,7 +846,7 @@ window.ReportService = (() => {
     generateTemplateReport({
       reportType: "evaluation",
       title: "Relatório de Avaliação",
-      subtitle: `Empresa: ${context.company.name} • Avaliação: ${context.selectedEvaluation.date}`,
+      subtitle: `Empresa: ${context.company.name} • Avaliação: ${formatDate(context.selectedEvaluation.date)}`,
       context,
       suffix: context.selectedEvaluation.date
     });

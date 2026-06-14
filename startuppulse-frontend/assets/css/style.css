@@ -458,6 +458,10 @@ button.nav-link {
   background: #f8fbfe;
 }
 
+#axisPanelTitle {
+  scroll-margin-top: 1.5rem;
+}
+
 /* Ajuste do offcanvas para leitura melhor. */
 .offcanvas {
   --bs-offcanvas-width: min(560px, 95vw);
