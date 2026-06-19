@@ -39,9 +39,35 @@
 
   const isManager = () => AuthService.getSession()?.role === "Gestor";
 
+  const viewLabels = {
+    dashboard: "Dashboard",
+    companies: "Empresas",
+    evaluations: "Avaliações",
+    consultancies: "Consultorias",
+    reports: "Relatórios",
+    notifications: "Notificação"
+  };
+
+  const editablePermissionViews = Object.keys(viewLabels);
+
   /* Controle visual da autenticação. */
   const authScreen = () => $("#authScreen");
   const appShell = () => $("#appShell");
+
+  const syncNavigationAccess = () => {
+    const session = AuthService.getSession();
+
+    $(".manager-only").toggleClass("d-none", !isManager());
+
+    $(".nav-view-btn[data-permission-view]").each(function () {
+      const viewName = $(this).data("permission-view");
+
+      $(this).closest(".nav-item").toggleClass(
+        "d-none",
+        !AuthService.canAccessView(viewName, session)
+      );
+    });
+  };
 
   /*
     Atualiza a interface para mostrar login ou aplicação,
@@ -60,9 +86,10 @@
     appShell().removeClass("d-none");
 
     /* Mostra o nome do usuário logado na topbar. */
-    $("#loggedUserName").text(
-      `${session.name}${session.role ? ` · ${session.role}` : ""}`
-    );
+    $("#loggedUserName").text(`${session.name}${session.role ? ` · ${session.role}` : ""}`);
+    $("#loggedUserMenuName").text(session.name);
+    $("#loggedUserMenuRole").text(`${session.role} · ${session.email}`);
+    syncNavigationAccess();
   };
 
   /*
@@ -87,6 +114,7 @@
         AuthService.login({ email, password });
 
         updateAuthUI();
+        changeView(AuthService.getFirstAllowedView());
         UiService.showToast("Login realizado com sucesso.", "success");
 
         /* Limpa o formulário depois do login. */
@@ -221,7 +249,39 @@
     /* Navegação principal por views. */
     $(document).on("click", ".nav-view-btn", function () {
       const view = $(this).data("view");
+
+      if (!AuthService.canAccessView(view)) {
+        UiService.showToast("Seu usuario nao possui acesso a este menu.", "warning");
+        return;
+      }
+
       changeView(view);
+    });
+
+    $(document).on("click", ".btn-toggle-user-password", function () {
+      const input = $(this).closest(".input-group").find(".user-password-input");
+      const nextType = input.attr("type") === "password" ? "text" : "password";
+
+      input.attr("type", nextType);
+      $(this).find("i").toggleClass("bi-eye bi-eye-slash");
+    });
+
+    $(document).on("change", ".user-role-select", function () {
+      const userCard = $(this).closest(".user-admin-card");
+      const isUserManager = $(this).val() === "Gestor";
+
+      userCard
+        .find(".user-permission-checkbox")
+        .prop("disabled", isUserManager)
+        .prop("checked", isUserManager ? true : undefined);
+    });
+
+    $(document).on("click", ".btn-update-user", function () {
+      handleUpdateUser($(this).closest(".user-admin-card"));
+    });
+
+    $(document).on("click", ".btn-delete-user", function () {
+      handleDeleteUser($(this).data("user-id"));
     });
 
     /* Ações de importação/exportação. */
@@ -637,6 +697,16 @@
 
   /* Alterna entre as views principais. */
   const changeView = (viewName) => {
+    if (!AuthService.canAccessView(viewName)) {
+      const fallbackView = AuthService.getFirstAllowedView();
+
+      if (viewName !== fallbackView) {
+        UiService.showToast("Acesso restrito para este usuario.", "warning");
+      }
+
+      viewName = fallbackView;
+    }
+
     appState.currentView = viewName;
 
     $(".app-view").addClass("d-none");
@@ -651,6 +721,7 @@
     if (viewName === "consultancies") renderConsultancies();
     if (viewName === "reports") renderReports();
     if (viewName === "notifications") renderNotifications();
+    if (viewName === "users") renderUserManagement();
   };
 
   /* Renderiza todas as áreas necessárias. */
@@ -663,6 +734,8 @@
     renderConsultancies();
     renderReports();
     renderNotifications();
+    renderUserManagement();
+    syncNavigationAccess();
   };
 
   /* Atualiza o estado vindo do DataService e re-renderiza. */
@@ -696,6 +769,195 @@
         );
       })
       .join("");
+  };
+
+  const renderPermissionOptions = (user) => {
+    const isUserManager = user.role === "Gestor";
+    const permissions = user.viewPermissions || [];
+
+    return editablePermissionViews
+      .map((viewName) => {
+        const checked = isUserManager || permissions.includes(viewName);
+        const disabled = isUserManager ? "disabled" : "";
+
+        return `
+          <label class="permission-option">
+            <input
+              type="checkbox"
+              class="form-check-input user-permission-checkbox"
+              value="${viewName}"
+              ${checked ? "checked" : ""}
+              ${disabled}
+            />
+            <span>${UiService.escapeHtml(viewLabels[viewName])}</span>
+          </label>
+        `;
+      })
+      .join("");
+  };
+
+  const renderUserManagement = () => {
+    if (!isManager()) {
+      $("#userManagementList").html(
+        UiService.renderEmptyState("Acesso restrito", "Somente gestores podem administrar usuarios.")
+      );
+      $("#demoUsersList").empty();
+      return;
+    }
+
+    const users = AuthService.getUsers().sort((a, b) => {
+      if (a.role !== b.role) {
+        return a.role === "Gestor" ? -1 : 1;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
+
+    $("#userManagementCountBadge").text(`${users.length} usuários`);
+
+    $("#userManagementList").html(
+      users
+        .map(
+          (user) => `
+            <article class="user-admin-card" data-user-id="${UiService.escapeHtml(user.id)}">
+              <div class="user-admin-card-header">
+                <div>
+                  <h3>${UiService.escapeHtml(user.name)}</h3>
+                  <span>${UiService.escapeHtml(user.role)}</span>
+                </div>
+                <span class="soft-badge ${
+                  user.status === "Ativo"
+                    ? "bg-success-subtle text-success-emphasis border border-success-subtle"
+                    : "bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle"
+                }">${UiService.escapeHtml(user.status)}</span>
+              </div>
+
+              <div class="row g-3">
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Usuário</label>
+                  <input type="text" class="form-control user-name-input" value="${UiService.escapeHtml(user.name)}" />
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Email cadastrado</label>
+                  <input type="email" class="form-control user-email-input" value="${UiService.escapeHtml(user.email)}" />
+                </div>
+                <div class="col-12 col-md-6">
+                  <label class="form-label">Senha cadastrada</label>
+                  <div class="input-group">
+                    <input type="password" class="form-control user-password-input" value="${UiService.escapeHtml(user.password)}" />
+                    <button class="btn btn-outline-secondary btn-toggle-user-password" type="button" aria-label="Mostrar senha">
+                      <i class="bi bi-eye"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <label class="form-label">Tipo de acesso</label>
+                  <select class="form-select user-role-select">
+                    <option value="Avaliador" ${user.role === "Avaliador" ? "selected" : ""}>Avaliador</option>
+                    <option value="Gestor" ${user.role === "Gestor" ? "selected" : ""}>Gestor</option>
+                  </select>
+                </div>
+                <div class="col-6 col-md-3">
+                  <label class="form-label">Status</label>
+                  <select class="form-select user-status-select">
+                    <option value="Ativo" ${user.status === "Ativo" ? "selected" : ""}>Ativo</option>
+                    <option value="Inativo" ${user.status === "Inativo" ? "selected" : ""}>Inativo</option>
+                  </select>
+                </div>
+                <div class="col-12">
+                  <div class="permission-grid">
+                    ${renderPermissionOptions(user)}
+                  </div>
+                </div>
+              </div>
+
+              <div class="user-admin-actions">
+                <button class="btn btn-sm btn-primary btn-update-user" type="button">
+                  <i class="bi bi-check2"></i>
+                  Atualizar
+                </button>
+                <button class="btn btn-sm btn-outline-danger btn-delete-user" data-user-id="${UiService.escapeHtml(user.id)}" type="button">
+                  <i class="bi bi-trash"></i>
+                  Excluir
+                </button>
+              </div>
+            </article>
+          `
+        )
+        .join("")
+    );
+
+    $("#demoUsersList").html(
+      users
+        .map(
+          (user) => `
+            <div class="demo-user-item">
+              <div>
+                <strong>${UiService.escapeHtml(user.email)}</strong>
+                <span>${UiService.escapeHtml(user.name)} · ${UiService.escapeHtml(user.role)}</span>
+              </div>
+              <code>${UiService.escapeHtml(user.password)}</code>
+            </div>
+          `
+        )
+        .join("")
+    );
+  };
+
+  const handleUpdateUser = (userCard) => {
+    if (!isManager()) {
+      UiService.showToast("Somente gestores podem alterar usuarios.", "warning");
+      return;
+    }
+
+    const userId = userCard.data("user-id");
+    const viewPermissions = userCard
+      .find(".user-permission-checkbox:checked")
+      .map(function () {
+        return $(this).val();
+      })
+      .get();
+
+    try {
+      AuthService.updateUser(userId, {
+        name: userCard.find(".user-name-input").val(),
+        email: userCard.find(".user-email-input").val(),
+        password: userCard.find(".user-password-input").val(),
+        role: userCard.find(".user-role-select").val(),
+        status: userCard.find(".user-status-select").val(),
+        viewPermissions
+      });
+
+      updateAuthUI();
+      renderUserManagement();
+
+      if (!AuthService.canAccessView(appState.currentView)) {
+        changeView(AuthService.getFirstAllowedView());
+      }
+
+      UiService.showToast("Usuario atualizado com sucesso.", "success");
+    } catch (error) {
+      UiService.showToast(error.message, "danger");
+    }
+  };
+
+  const handleDeleteUser = (userId) => {
+    if (!isManager()) {
+      UiService.showToast("Somente gestores podem excluir usuarios.", "warning");
+      return;
+    }
+
+    if (!window.confirm("Deseja excluir este usuario do JSON local?")) {
+      return;
+    }
+
+    try {
+      AuthService.deleteUser(userId);
+      renderUserManagement();
+      UiService.showToast("Usuario excluido com sucesso.", "success");
+    } catch (error) {
+      UiService.showToast(error.message, "danger");
+    }
   };
 
   /* Preenche selects que dependem da lista de empresas. */
@@ -1153,6 +1415,7 @@
   const handleDeleteCompany = (companyId) => {
     if (!isManager()) {
       UiService.showToast("Apenas gestores podem excluir empresas.", "warning");
+      syncNavigationAccess();
       return;
     }
 

@@ -134,7 +134,8 @@
                       </form>
 
                       <div class="mt-4 small text-muted">
-                        Usuário padrão sugerido: <strong>admin@incubadora.com</strong> / <strong>123456</strong>
+                        Contas fictícias: <strong>gestor@incubadora.com</strong> / <strong>123456</strong>
+                        e <strong>avaliador@incubadora.com</strong> / <strong>123456</strong>
                       </div>
                     </div>
                   </div>
@@ -182,32 +183,32 @@
             <!-- Navegação principal do sistema. -->
             <ul class="navbar-nav mx-auto gap-lg-2">
               <li class="nav-item">
-                <button class="nav-link active nav-view-btn" data-view="dashboard">
+                <button class="nav-link active nav-view-btn" data-view="dashboard" data-permission-view="dashboard">
                   Dashboard
                 </button>
               </li>
               <li class="nav-item">
-                <button class="nav-link nav-view-btn" data-view="companies">
+                <button class="nav-link nav-view-btn" data-view="companies" data-permission-view="companies">
                   Empresas
                 </button>
               </li>
               <li class="nav-item">
-                <button class="nav-link nav-view-btn" data-view="evaluations">
+                <button class="nav-link nav-view-btn" data-view="evaluations" data-permission-view="evaluations">
                   Avaliações
                 </button>
               </li>
               <li class="nav-item">
-                <button class="nav-link nav-view-btn" data-view="consultancies">
+                <button class="nav-link nav-view-btn" data-view="consultancies" data-permission-view="consultancies">
                   Consultorias
                 </button>
               </li>
               <li class="nav-item">
-                <button class="nav-link nav-view-btn" data-view="reports">
+                <button class="nav-link nav-view-btn" data-view="reports" data-permission-view="reports">
                   Relatórios
                 </button>
               </li>
               <li class="nav-item">
-                <button class="nav-link nav-view-btn" data-view="notifications">
+                <button class="nav-link nav-view-btn" data-view="notifications" data-permission-view="notifications">
                   Notificação
                 </button>
               </li>
@@ -216,9 +217,37 @@
             <!-- Ações globais do operador da incubadora. -->
              
             <div class="d-flex align-items-center gap-2 topbar-actions">
-              <div class="logged-user-chip text-white me-2">
-                <i class="bi bi-person-circle"></i>
-                <span id="loggedUserName">Usuário</span>
+              <div class="dropdown user-menu">
+                <button
+                  class="btn btn-topbar user-menu-toggle"
+                  type="button"
+                  id="userMenuToggle"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                >
+                  <i class="bi bi-person-circle"></i>
+                  <span id="loggedUserName">Usuário</span>
+                  <i class="bi bi-chevron-down"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end user-menu-dropdown" aria-labelledby="userMenuToggle">
+                  <li class="user-menu-summary">
+                    <div class="user-menu-name" id="loggedUserMenuName">Usuário</div>
+                    <div class="user-menu-meta" id="loggedUserMenuRole">Função</div>
+                  </li>
+                  <li><hr class="dropdown-divider" /></li>
+                  <li>
+                    <button class="dropdown-item nav-view-btn manager-only" data-view="users" type="button">
+                      <i class="bi bi-people"></i>
+                      Gestão de Usuários
+                    </button>
+                  </li>
+                  <li>
+                    <button class="dropdown-item" id="btnLogout" type="button">
+                      <i class="bi bi-box-arrow-right"></i>
+                      Sair
+                    </button>
+                  </li>
+                </ul>
               </div>
 
               <button class="btn btn-topbar" id="btnImportJson">
@@ -241,10 +270,6 @@
                 Exportar Excel
               </button>
 
-              <button class="btn btn-topbar" id="btnLogout">
-                <i class="bi bi-box-arrow-right"></i>
-                Sair
-              </button>
             </div>
 
           </div>
@@ -902,6 +927,41 @@
               <p class="section-subtitle mb-0">Registros incluídos no estado JSON da aplicação.</p>
             </div>
             <div id="notificationHistory"></div>
+          </div>
+        </section>
+
+        <!-- VIEW: GESTAO DE USUARIOS -->
+        <section class="app-view d-none" id="view-users">
+          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+            <div>
+              <h1 class="page-title mb-1">Gestão de Usuários</h1>
+              <p class="page-subtitle mb-0">
+                Controle de contas, funções e menus disponíveis para avaliadores.
+              </p>
+            </div>
+            <span class="section-badge" id="userManagementCountBadge">0 usuários</span>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-12 col-xl-8">
+              <div class="app-card">
+                <div class="card-header-lite mb-3">
+                  <h2 class="section-title mb-1">Contas cadastradas</h2>
+                  <p class="section-subtitle mb-0">Registros persistidos no JSON local de autenticação.</p>
+                </div>
+                <div class="user-management-grid" id="userManagementList"></div>
+              </div>
+            </div>
+
+            <div class="col-12 col-xl-4">
+              <div class="app-card muted-card">
+                <div class="card-header-lite mb-3">
+                  <h2 class="section-title mb-1">Acessos rápidos</h2>
+                  <p class="section-subtitle mb-0">Usuários fictícios para teste de login.</p>
+                </div>
+                <div id="demoUsersList" class="demo-user-list"></div>
+              </div>
+            </div>
           </div>
         </section>
       </main>
