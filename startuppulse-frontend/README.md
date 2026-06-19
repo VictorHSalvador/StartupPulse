@@ -35,5 +35,3 @@ Use a extensão **Live Server**.
 - `assets/js/app.js`: fluxo principal da aplicação
 - `assets/data/sample-data.js`: dados iniciais de demonstração
 
-## Observação importante
-A classificação atual ainda usa uma **regra provisória simples**, isolada em `calculation-service.js`, justamente para facilitar a futura substituição por uma abordagem multicritério mais robusta.
